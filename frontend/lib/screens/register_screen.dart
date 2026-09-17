@@ -87,7 +87,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 ),
                 const SizedBox(height: 16),
                 DropdownButtonFormField<String>(
-                  value: _role,
+                  initialValue: _role,
                   decoration: const InputDecoration(labelText: 'I am a', border: OutlineInputBorder()),
                   items: const [
                     DropdownMenuItem(value: 'farmer', child: Text('Farmer')),
