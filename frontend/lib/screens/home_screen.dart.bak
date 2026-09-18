@@ -1,0 +1,823 @@
+import 'package:flutter/material.dart';
+
+import '../models/market_price.dart';
+import '../models/trader.dart';
+import '../models/user.dart';
+import '../models/weather.dart';
+import '../services/api_service.dart';
+import '../theme/colors.dart';
+import '../theme/locale.dart';
+import '../widgets/dashboard_shell.dart';
+import '../widgets/ui/cards.dart';
+import '../widgets/weather_card.dart';
+import 'find_traders_screen.dart';
+import 'market_prices_screen.dart';
+import 'marketplace_screen.dart';
+import 'my_crops_screen.dart';
+import 'notifications_screen.dart';
+import 'profile_screen.dart';
+import 'quality_analysis_screen.dart';
+import 'sell_crop_screen.dart';
+import 'tool_rental_screen.dart';
+import 'weather_alerts_screen.dart';
+
+/// Farmer dashboard: responsive shell (sidebar / bottom nav) with all pages.
+class HomeScreen extends StatefulWidget {
+  const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  final _apiService = ApiService();
+  AppUser? _user;
+
+  static const _items = [
+    ShellItem(labelKey: K.dashboard, icon: Icons.space_dashboard_outlined, selectedIcon: Icons.space_dashboard),
+    ShellItem(labelKey: K.myCrops, icon: Icons.eco_outlined, selectedIcon: Icons.eco),
+    ShellItem(labelKey: K.traders, icon: Icons.handshake_outlined, selectedIcon: Icons.handshake),
+    ShellItem(labelKey: K.marketPrices, icon: Icons.trending_up, selectedIcon: Icons.trending_up),
+    ShellItem(labelKey: K.weather, icon: Icons.wb_sunny_outlined, selectedIcon: Icons.wb_sunny),
+    ShellItem(labelKey: K.toolRental, icon: Icons.agriculture_outlined, selectedIcon: Icons.agriculture),
+    ShellItem(labelKey: K.marketplace, icon: Icons.storefront_outlined, selectedIcon: Icons.storefront),
+    ShellItem(labelKey: K.notifications, icon: Icons.notifications_none, selectedIcon: Icons.notifications),
+    ShellItem(labelKey: K.profile, icon: Icons.person_outline, selectedIcon: Icons.person),
+  ];
+
+  static const _mobileDestinations = [0, 1, 2, 3, 8];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUser();
+  }
+
+  Future<void> _loadUser() async {
+    try {
+      final user = await _apiService.getCurrentUser();
+      if (mounted) setState(() => _user = user);
+    } catch (_) {}
+  }
+
+  void _push(Widget screen) {
+    Navigator.of(context).push(MaterialPageRoute(builder: (_) => screen));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return DashboardShell(
+      user: _user,
+      items: _items,
+      initialIndex: 0,
+      showLocation: true,
+      defaultLocation: 'Dharwad, Karnataka',
+      mobileDestinations: _mobileDestinations,
+      pages: [
+        _DashboardPage(
+          user: _user,
+          onRefresh: _loadUser,
+          onNavigate: (i) {},
+          onSellCrop: () => _push(const SellCropScreen()),
+          onAnalyzeQuality: () => _push(const QualityAnalysisScreen()),
+        ),
+        const MyCropsScreen(),
+        const FindTradersScreen(),
+        const MarketPricesScreen(),
+        const WeatherAlertsScreen(),
+        const ToolRentalScreen(),
+        const MarketplaceScreen(),
+        const NotificationsScreen(),
+        ProfileScreen(user: _user),
+      ],
+    );
+  }
+}
+
+class _DashboardPage extends StatefulWidget {
+  final AppUser? user;
+  final VoidCallback onRefresh;
+  final ValueChanged<int> onNavigate;
+  final VoidCallback onSellCrop;
+  final VoidCallback onAnalyzeQuality;
+
+  const _DashboardPage({
+    required this.user,
+    required this.onRefresh,
+    required this.onNavigate,
+    required this.onSellCrop,
+    required this.onAnalyzeQuality,
+  });
+
+  @override
+  State<_DashboardPage> createState() => _DashboardPageState();
+}
+
+class _DashboardPageState extends State<_DashboardPage> {
+  final Weather _weather = Weather.sampleDharwad();
+  final List<MarketPrice> _prices = MarketPrice.sampleData();
+  final List<Trader> _traders = Trader.sampleData();
+
+  static const _weatherIdx = 4;
+  static const _marketIdx = 3;
+  static const _tradersIdx = 2;
+  static const _myCropsIdx = 1;
+  static const _rentToolsIdx = 5;
+  static const _marketplaceIdx = 6;
+
+  @override
+  Widget build(BuildContext context) {
+    return RefreshIndicator(
+      onRefresh: widget.onRefresh,
+      child: ListView(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+        children: [
+          _WelcomeBanner(user: widget.user),
+          const SizedBox(height: 16),
+          _DashboardGrid(
+            weather: _weather,
+            prices: _prices,
+            onWeatherMore: () => widget.onNavigate(_weatherIdx),
+            onViewMarket: () => widget.onNavigate(_marketIdx),
+          ),
+          const SizedBox(height: 16),
+          _buildQuickActions(),
+          const SizedBox(height: 16),
+          _RecentSection(
+            cropsTitle: context.str(K.recentListings, fallback: 'Recent Crop Listings'),
+            offersTitle: context.str(K.recentOffers, fallback: 'Recent Trader Offers'),
+            onViewMyCrops: () => widget.onNavigate(_myCropsIdx),
+            onViewTraders: () => widget.onNavigate(_tradersIdx),
+          ),
+          const SizedBox(height: 16),
+          const _TipCard(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildQuickActions() {
+    final c = context.colors;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SectionHeader(
+          title: context.str(K.quickActions, fallback: 'Quick Actions'),
+          actionLabel: context.str(K.marketplace, fallback: 'Marketplace'),
+          actionIcon: Icons.storefront,
+          onAction: () => widget.onNavigate(_marketplaceIdx),
+        ),
+        const SizedBox(height: 12),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final cols = Res2.cols(constraints.maxWidth);
+            return GridView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: cols,
+                mainAxisExtent: 132,
+                crossAxisSpacing: 12,
+                mainAxisSpacing: 12,
+              ),
+              itemCount: 4,
+              itemBuilder: (context, i) => _QuickActionCard(
+                color: _quickActions[i].color,
+                icon: _quickActions[i].icon,
+                title: _quickActions[i].title,
+                subtitle: _quickActions[i].subtitle,
+                onTap: _quickActions[i].onTap(this),
+              ),
+            );
+          },
+        ),
+      ],
+    );
+  }
+}
+
+/// Local responsive column helper (avoid name clash with Res).
+class Res2 {
+  static int cols(double width) {
+    if (width >= 700) return 4;
+    if (width >= 450) return 2;
+    return 2;
+  }
+}
+
+class _QuickActionSpec {
+  final String title;
+  final String subtitle;
+  final IconData icon;
+  final Color color;
+  final VoidCallback Function(_DashboardPageState) onTap;
+
+  const _QuickActionSpec({
+    required this.title,
+    required this.subtitle,
+    required this.icon,
+    required this.color,
+    required this.onTap,
+  });
+}
+
+class _QuickActionCard extends StatelessWidget {
+  final Color color;
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+
+  const _QuickActionCard({
+    required this.color,
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Material(
+      color: c.surface,
+      borderRadius: BorderRadius.circular(16),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Container(
+          decoration: BoxDecoration(
+            border: Border.all(color: c.border),
+            borderRadius: BorderRadius.circular(16),
+          ),
+          padding: const EdgeInsets.all(14),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.14),
+                  borderRadius: BorderRadius.circular(11),
+                ),
+                child: Icon(icon, color: color, size: 21),
+              ),
+              const Spacer(),
+              Text(
+                title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.w700,
+                  color: c.textPrimary,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                subtitle,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(fontSize: 11, color: c.textSecondary),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _WelcomeBanner extends StatelessWidget {
+  final AppUser? user;
+  const _WelcomeBanner({this.user});
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final name = user?.name?.split(' ').first ?? 'Farmer';
+    final greeting = _greeting(context);
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [c.primary, c.primaryDark],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: c.primary.withValues(alpha: 0.35),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Stack(
+        children: [
+          Positioned(
+            right: -30,
+            top: -40,
+            child: Icon(
+              Icons.eco_rounded,
+              size: 160,
+              color: Colors.white.withValues(alpha: 0.08),
+            ),
+          ),
+          Positioned(
+            right: 40,
+            bottom: -44,
+            child: Icon(
+              Icons.grass_rounded,
+              size: 120,
+              color: Colors.white.withValues(alpha: 0.06),
+            ),
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '$greeting,',
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.85),
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                name,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 22,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -0.4,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                context.str(K.farmOverview, fallback: 'Farm Overview'),
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.9),
+                  fontSize: 13,
+                ),
+              ),
+              const SizedBox(height: 14),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: const [
+                  _BannerStat(icon: Icons.landscape_outlined, value: '2.4 acres', label: 'Land'),
+                  _BannerStat(icon: Icons.eco_outlined, value: '5 crops', label: 'Active'),
+                  _BannerStat(icon: Icons.inventory_2_outlined, value: '250 kg', label: 'To sell'),
+                ],
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _greeting(BuildContext context) {
+    final hour = DateTime.now().hour;
+    if (hour < 12) return context.str(K.greetingMorning, fallback: 'Good morning');
+    if (hour < 17) return context.str(K.greetingAfternoon, fallback: 'Good afternoon');
+    return context.str(K.greetingEvening, fallback: 'Good evening');
+  }
+}
+
+class _BannerStat extends StatelessWidget {
+  final IconData icon;
+  final String value;
+  final String label;
+
+  const _BannerStat({required this.icon, required this.value, required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.14),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 15, color: Colors.white),
+          const SizedBox(width: 6),
+          Text(
+            value,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 12.5,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.8),
+              fontSize: 11,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+final List<_QuickActionSpec> _quickActions = [
+  _QuickActionSpec(
+    title: 'Sell Crop',
+    subtitle: 'List produce to traders',
+    icon: Icons.sell_outlined,
+    color: const Color(0xFF1F6B45),
+    onTap: (s) => s.widget.onSellCrop,
+  ),
+  _QuickActionSpec(
+    title: 'Analyze Quality',
+    subtitle: 'AI grade & scan crops',
+    icon: Icons.biotech_outlined,
+    color: const Color(0xFF5DAE54),
+    onTap: (s) => s.widget.onAnalyzeQuality,
+  ),
+  _QuickActionSpec(
+    title: 'Find Traders',
+    subtitle: 'Matched buyers nearby',
+    icon: Icons.handshake_outlined,
+    color: const Color(0xFFF59E0B),
+    onTap: (s) => s.widget.onNavigate(_DashboardPageState._tradersIdx),
+  ),
+  _QuickActionSpec(
+    title: 'Rent Tools',
+    subtitle: 'Tractors & equipment',
+    icon: Icons.agriculture_outlined,
+    color: const Color(0xFF2E86AB),
+    onTap: (s) => s.widget.onNavigate(_DashboardPageState._rentToolsIdx),
+  ),
+];
+
+class _DashboardGrid extends StatelessWidget {
+  final Weather weather;
+  final List<MarketPrice> prices;
+  final VoidCallback onWeatherMore;
+  final VoidCallback onViewMarket;
+
+  const _DashboardGrid({
+    required this.weather,
+    required this.prices,
+    required this.onWeatherMore,
+    required this.onViewMarket,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SectionHeader(
+          title: context.str(K.weatherSummary, fallback: 'Weather Summary'),
+          actionLabel: 'Details',
+          actionIcon: Icons.arrow_forward,
+          onAction: onWeatherMore,
+        ),
+        const SizedBox(height: 10),
+        WeatherCard(weather: weather, onMore: onWeatherMore),
+        const SizedBox(height: 20),
+        SectionHeader(
+          title: context.str(K.liveMarketPrices, fallback: 'Live Market Prices'),
+          actionLabel: 'View all',
+          actionIcon: Icons.trending_up,
+          onAction: onViewMarket,
+        ),
+        const SizedBox(height: 10),
+        SizedBox(
+          height: 128,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            itemCount: prices.length,
+            separatorBuilder: (_, _) => const SizedBox(width: 12),
+            itemBuilder: (context, i) => _MiniPriceCard(price: prices[i]),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _MiniPriceCard extends StatelessWidget {
+  final MarketPrice price;
+  const _MiniPriceCard({required this.price});
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final trendColor = price.isRising ? c.positive : c.negative;
+    return Container(
+      width: 200,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: c.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: c.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Text(price.emoji, style: const TextStyle(fontSize: 22)),
+              const Spacer(),
+              StatusBadge(
+                text: price.changePercent >= 0 ? '▲ ${price.changePercent.toStringAsFixed(1)}%' : '▼ ${price.changePercent.abs().toStringAsFixed(1)}%',
+                color: trendColor,
+              ),
+            ],
+          ),
+          const Spacer(),
+          Text(
+            price.crop,
+            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: c.textPrimary),
+          ),
+          Text(
+            price.priceLabel,
+            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: c.primaryDark),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _RecentSection extends StatelessWidget {
+  final String cropsTitle;
+  final String offersTitle;
+  final VoidCallback onViewMyCrops;
+  final VoidCallback onViewTraders;
+
+  const _RecentSection({
+    required this.cropsTitle,
+    required this.offersTitle,
+    required this.onViewMyCrops,
+    required this.onViewTraders,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final sideBySide = constraints.maxWidth >= 840;
+        final listingCard = _ListingsCard(onView: onViewMyCrops);
+        final offersCard = _OffersCard(onView: onViewTraders);
+
+        if (sideBySide) {
+          return Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(child: listingCard),
+              const SizedBox(width: 14),
+              Expanded(child: offersCard),
+            ],
+          );
+        }
+        return Column(
+          children: [
+            listingCard,
+            const SizedBox(height: 14),
+            offersCard,
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _ListingsCard extends StatelessWidget {
+  final VoidCallback onView;
+  const _ListingsCard({required this.onView});
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final crops = CropListingSample.samples;
+    return AppCard(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                context.str(K.recentListings, fallback: 'Recent Crop Listings'),
+                style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+              ),
+              TextButton(onPressed: onView, child: const Text('View all')),
+            ],
+          ),
+          const Divider(),
+          for (final crop in crops) _CropRow(crop: crop),
+        ],
+      ),
+    );
+  }
+}
+
+class CropListingSample {
+  static const samples = [
+    CropRowData('🍅', 'Tomato', '250 kg', 'Active', '₹28/kg'),
+    CropRowData('🌾', 'Wheat', '5 quintal', 'Offer received', '₹2,200/q'),
+    CropRowData('🧅', 'Onion', '1 quintal', 'Sold', '₹36/kg'),
+  ];
+}
+
+class CropRowData {
+  final String emoji;
+  final String name;
+  final String qty;
+  final String status;
+  final String price;
+  const CropRowData(this.emoji, this.name, this.qty, this.status, this.price);
+}
+
+class _CropRow extends StatelessWidget {
+  final CropRowData crop;
+  const _CropRow({required this.crop});
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final statusColor = crop.status == 'Sold'
+        ? c.textSecondary
+        : crop.status == 'Offer received'
+            ? c.accent
+            : c.positive;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        children: [
+          Text(crop.emoji, style: const TextStyle(fontSize: 22)),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  crop.name,
+                  style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600),
+                ),
+                Text(crop.qty, style: TextStyle(fontSize: 11.5, color: c.textSecondary)),
+              ],
+            ),
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(crop.price, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
+              const SizedBox(height: 2),
+              StatusBadge(text: crop.status, color: statusColor),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _OffersCard extends StatelessWidget {
+  final VoidCallback onView;
+  const _OffersCard({required this.onView});
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final offers = Trader.sampleData().take(3).toList();
+    return AppCard(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                context.str(K.recentOffers, fallback: 'Recent Trader Offers'),
+                style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+              ),
+              TextButton(onPressed: onView, child: const Text('View all')),
+            ],
+          ),
+          const Divider(),
+          for (final trader in offers) _OfferRow(trader: trader),
+        ],
+      ),
+    );
+  }
+}
+
+class _OfferRow extends StatelessWidget {
+  final Trader trader;
+  const _OfferRow({required this.trader});
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        children: [
+          Text(trader.emoji, style: const TextStyle(fontSize: 20)),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  trader.name,
+                  style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600),
+                ),
+                Text(
+                  '${trader.cropType} · ${trader.distance}',
+                  style: TextStyle(fontSize: 11.5, color: c.textSecondary),
+                ),
+              ],
+            ),
+          ),
+          StatusBadge(
+            text: trader.offeredPrice,
+            color: c.positive,
+            icon: Icons.currency_rupee_rounded,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TipCard extends StatelessWidget {
+  const _TipCard();
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [c.accentLight, c.accent.withValues(alpha: 0.25)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: c.accent.withValues(alpha: 0.4)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: c.accent,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(Icons.lightbulb_outline, color: Colors.black87, size: 22),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  context.str(K.tipOfTheDay, fallback: 'Farming Tip of the Day'),
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    color: c.textOnAccent,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'Water your crops early in the morning to reduce evaporation. Soil moisture is highest before sunrise — you can save up to 30% water.',
+                  style: TextStyle(
+                    fontSize: 13.5,
+                    height: 1.45,
+                    color: c.textOnAccent,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}

@@ -17,6 +17,7 @@ class ApiService {
   static const String baseUrl = 'http://localhost:8000';
 
   static const _tokenKey = 'auth_token';
+  static const _roleKey = 'user_role';
 
   Future<void> register({
     required String name,
@@ -62,6 +63,21 @@ class ApiService {
 
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_tokenKey, token);
+
+    try {
+      final user = await getCurrentUser();
+      await prefs.setString(_roleKey, user.role);
+    } catch (_) {}
+  }
+
+  Future<void> saveUserRole(String role) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_roleKey, role);
+  }
+
+  Future<String?> getSavedRole() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_roleKey);
   }
 
   Future<AppUser> getCurrentUser() async {
