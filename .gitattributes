@@ -1,0 +1,34 @@
+# Normalise line endings so a Windows checkout cannot turn every Dart or Python
+# file into a phantom diff.
+* text=auto eol=lf
+
+*.dart text eol=lf
+*.py text eol=lf
+*.yaml text eol=lf
+*.yml text eol=lf
+*.md text eol=lf
+*.json text eol=lf
+
+# Windows scripts still need CRLF to run.
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+
+# Never diff or line-ending-normalise binaries.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.ico binary
+*.db binary
+*.sqlite binary
+*.ttf binary
+*.otf binary
+*.woff binary
+*.woff2 binary
+*.pdf binary
+*.pyc binary
+
+# Lockfiles are diffed and must stay reviewable.
+frontend/pubspec.lock text eol=lf

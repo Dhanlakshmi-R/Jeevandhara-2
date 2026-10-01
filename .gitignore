@@ -1,13 +1,68 @@
-# backend
-backend/venv/
-backend/__pycache__/
-backend/.env
-backend/*.db
+# ---------------------------------------------------------------------------
+# Secrets
+# ---------------------------------------------------------------------------
+# Never commit real credentials. `.env.example` is the tracked template and is
+# re-included below, because the broad `.env.*` rule would otherwise swallow it.
+.env
+.env.*
+!.env.example
 
-# frontend (Flutter)
-frontend/.dart_tool/
-frontend/.flutter-plugins
-frontend/.flutter-plugins-dependencies
-frontend/build/
-frontend/.packages
-frontend/flutter/
+# ---------------------------------------------------------------------------
+# Python
+# ---------------------------------------------------------------------------
+# `__pycache__` appears at every import depth (app/, app/routers/, tests/),
+# so it has to be matched recursively. The old `backend/__pycache__/` rule only
+# ever matched that one exact path and let everything else through.
+**/__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Test / coverage / packaging artefacts
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+*.egg-info/
+.mypy_cache/
+.ruff_cache/
+
+# ---------------------------------------------------------------------------
+# Databases
+# ---------------------------------------------------------------------------
+# The SQLite databases are generated or machine-local.
+#   backend/jeevandhara.db          runtime auth data
+#   backend/app/data/india_places.db  gazetteer, ~16 MB, rebuild with
+#                                    backend/scripts/build_india_places.py
+*.db
+*.sqlite
+*.sqlite3
+*.db-journal
+
+# ---------------------------------------------------------------------------
+# Flutter / Dart
+# ---------------------------------------------------------------------------
+# `frontend/` also carries its own .gitignore; these rules are duplicated here
+# so the repo root is safe to clone-and-build without relying on that file.
+**/.dart_tool/
+**/.packages
+**/build/
+**/.flutter-plugins
+**/.flutter-plugins-dependencies
+**/pubspec_overrides.yaml
+
+# ---------------------------------------------------------------------------
+# Editor / OS noise
+# ---------------------------------------------------------------------------
+.idea/
+.vscode/
+*.iml
+.DS_Store
+Thumbs.db
+desktop.ini
