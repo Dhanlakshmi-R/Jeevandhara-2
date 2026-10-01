@@ -77,6 +77,16 @@ class K {
   static const search = 'search';
   static const today = 'today';
   static const thisWeek = 'thisWeek';
+
+  // Assistant + navigation
+  static const chat = 'chat';
+  static const groupAssistant = 'groupAssistant';
+  static const groupTools = 'groupTools';
+  static const groupMarketplace = 'groupMarketplace';
+  static const groupAccount = 'groupAccount';
+  static const newConversation = 'newConversation';
+  static const switchTheme = 'switchTheme';
+  static const searchTools = 'searchTools';
 }
 
 class AppStrings {
@@ -127,6 +137,14 @@ class AppStrings {
     K.search: 'Search',
     K.today: 'Today',
     K.thisWeek: 'This week',
+    K.chat: 'Chat',
+    K.groupAssistant: 'Assistant',
+    K.groupTools: 'Assistant tools',
+    K.groupMarketplace: 'Marketplace',
+    K.groupAccount: 'Account',
+    K.newConversation: 'New conversation',
+    K.switchTheme: 'Switch theme',
+    K.searchTools: 'Search tools',
   };
 
   static const _kn = <String, String>{
@@ -176,6 +194,14 @@ class AppStrings {
     K.search: 'ಹುಡುಕಿ',
     K.today: 'ಇಂದು',
     K.thisWeek: 'ಈ ವಾರ',
+    K.chat: 'ಚಾಟ್',
+    K.groupAssistant: 'ಸಹಾಯಕ',
+    K.groupTools: 'ಸಹಾಯಕ ಸಲಕರಣೆಗಳು',
+    K.groupMarketplace: 'ಮಾರುಕಟ್ಟೆ',
+    K.groupAccount: 'ಖಾತೆ',
+    K.newConversation: 'ಹೊಸ ಸಂಭಾಷಣೆ',
+    K.switchTheme: 'ಥೀಮ್ ಬದಲಾಯಿಸಿ',
+    K.searchTools: 'ಸಲಕರಣೆಗಳನ್ನು ಹುಡುಕಿ',
   };
 
   /// Returns localized string. Falls back to English.
@@ -186,5 +212,6 @@ class AppStrings {
 }
 
 extension AppStringsX on BuildContext {
-  String str(String key, {String? fallback}) => AppStrings.of(this, key, fallback: fallback);
+  String str(String key, {String? fallback}) =>
+      AppStrings.of(this, key, fallback: fallback);
 }

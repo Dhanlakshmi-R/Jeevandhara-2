@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../theme/colors.dart';
+import 'package:jeevandhara2/theme/colors.dart';
 
 /// Primary solid button with brand gradient. Theme-aware.
 class AppPrimaryButton extends StatelessWidget {
@@ -108,7 +108,8 @@ class AppOutlineButton extends StatelessWidget {
         style: OutlinedButton.styleFrom(
           foregroundColor: c.textPrimary,
           side: BorderSide(color: c.primary.withValues(alpha: 0.6), width: 1.4),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
           textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
         ),
         icon: icon == null ? const SizedBox.shrink() : Icon(icon, size: 20),
@@ -144,7 +145,8 @@ class AppTonalButton extends StatelessWidget {
         style: FilledButton.styleFrom(
           backgroundColor: c.primaryLight,
           foregroundColor: c.primaryDark,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
         ),
         child: icon == null
@@ -195,8 +197,7 @@ class AppIconButton extends StatelessWidget {
             child: Icon(
               icon,
               size: 21,
-              color: color ??
-                  (selected ? c.primary : c.textPrimary),
+              color: color ?? (selected ? c.primary : c.textPrimary),
             ),
           ),
         ),

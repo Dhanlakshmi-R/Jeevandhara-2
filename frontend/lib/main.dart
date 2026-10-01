@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
-import 'screens/splash_screen.dart';
-import 'theme/app_theme.dart';
-import 'theme/locale.dart';
+
+import 'package:jeevandhara2/screens/splash_screen.dart';
+import 'package:jeevandhara2/theme/app_theme.dart';
+import 'package:jeevandhara2/theme/locale.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();

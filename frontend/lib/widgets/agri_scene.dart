@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../theme/colors.dart';
+import 'package:jeevandhara2/theme/colors.dart';
 
 /// Original, theme-aware agriculture illustration.
 ///
@@ -69,8 +69,11 @@ class _SceneRenderer {
 
   Widget render(BuildContext context) {
     final c = context.colors;
-    final skyTop = onDark ? c.primary.withValues(alpha: 0.16) : const Color(0xFFFDF3D7);
-    final skyBottom = onDark ? c.brandGradientEnd.withValues(alpha: 0.35) : const Color(0xFFE6F5E4);
+    final skyTop =
+        onDark ? c.primary.withValues(alpha: 0.16) : const Color(0xFFFDF3D7);
+    final skyBottom = onDark
+        ? c.brandGradientEnd.withValues(alpha: 0.35)
+        : const Color(0xFFE6F5E4);
 
     return DecoratedBox(
       decoration: BoxDecoration(
@@ -119,7 +122,8 @@ class _SceneRenderer {
     );
   }
 
-  Widget _cloud({double left = 30, double top = 44, double w = 64, double a = 0.5}) {
+  Widget _cloud(
+      {double left = 30, double top = 44, double w = 64, double a = 0.5}) {
     return Positioned(
       left: left,
       top: top,
@@ -127,7 +131,9 @@ class _SceneRenderer {
         width: w,
         height: 18,
         decoration: BoxDecoration(
-          color: onDark ? _w(Colors.white, a) : Colors.white.withValues(alpha: 0.85),
+          color: onDark
+              ? _w(Colors.white, a)
+              : Colors.white.withValues(alpha: 0.85),
           borderRadius: BorderRadius.circular(12),
         ),
       ),
@@ -160,7 +166,8 @@ class _SceneRenderer {
     );
   }
 
-  Widget _cropRow({required double left, required double bottom, required int stalks}) {
+  Widget _cropRow(
+      {required double left, required double bottom, required int stalks}) {
     return Positioned(
       left: left,
       bottom: bottom,
@@ -171,8 +178,15 @@ class _SceneRenderer {
           final green = onDark ? _w(_lightGreen, 0.7) : _midGreen;
           return Padding(
             padding: const EdgeInsets.symmetric(horizontal: 3),
-            child: Container(width: 4, height: 14 + (i % 3) * 5, color: green, alignment: Alignment.topCenter,
-              child: Container(width: 6, height: 5, color: onDark ? _w(_lightGreen, 0.7) : _midGreen)),
+            child: Container(
+                width: 4,
+                height: 14 + (i % 3) * 5,
+                color: green,
+                alignment: Alignment.topCenter,
+                child: Container(
+                    width: 6,
+                    height: 5,
+                    color: onDark ? _w(_lightGreen, 0.7) : _midGreen)),
           );
         }),
       ),
@@ -214,17 +228,43 @@ class _SceneRenderer {
       _sunShape(),
       _cloud(left: 40, top: 56, w: 60),
       _cloud(left: 150, top: 34, w: 74),
-      _hill(left: -40, bottom: -20, w: 230, h: 140, color: onDark ? _deepGreen : _lightGreen, alpha: onDark ? 0.5 : 0.55),
-      _hill(left: 150, bottom: -40, w: 300, h: 165, color: onDark ? _midGreen : _midGreen, alpha: onDark ? 0.55 : 0.85),
-      _hill(left: 300, bottom: -30, w: 180, h: 130, color: onDark ? _lightGreen : _deepGreen, alpha: onDark ? 0.5 : 0.75),
+      _hill(
+          left: -40,
+          bottom: -20,
+          w: 230,
+          h: 140,
+          color: onDark ? _deepGreen : _lightGreen,
+          alpha: onDark ? 0.5 : 0.55),
+      _hill(
+          left: 150,
+          bottom: -40,
+          w: 300,
+          h: 165,
+          color: onDark ? _midGreen : _midGreen,
+          alpha: onDark ? 0.55 : 0.85),
+      _hill(
+          left: 300,
+          bottom: -30,
+          w: 180,
+          h: 130,
+          color: onDark ? _lightGreen : _deepGreen,
+          alpha: onDark ? 0.5 : 0.75),
       _cropRow(left: 70, bottom: 68, stalks: 11),
       _cropRow(left: 210, bottom: 46, stalks: 9),
       _cropRow(left: 330, bottom: 60, stalks: 10),
       _tree(left: 24, bottom: 74),
       _tree(left: 358, bottom: 60),
       _fence(left: 128, bottom: 108),
-      if (onDark) Positioned(right: 24, bottom: 22, child: Icon(Icons.eco, size: 34, color: _w(_gold, 0.85)))
-      else Positioned(right: 24, bottom: 22, child: Icon(Icons.eco, size: 34, color: _gold)),
+      if (onDark)
+        Positioned(
+            right: 24,
+            bottom: 22,
+            child: Icon(Icons.eco, size: 34, color: _w(_gold, 0.85)))
+      else
+        Positioned(
+            right: 24,
+            bottom: 22,
+            child: Icon(Icons.eco, size: 34, color: _gold)),
     ];
   }
 
@@ -243,7 +283,9 @@ class _SceneRenderer {
               child: Container(
                 width: post,
                 height: 20 + (i.isEven ? 4 : 0),
-                color: onDark ? _w(Colors.white, 0.35) : Colors.brown.withValues(alpha: 0.7),
+                color: onDark
+                    ? _w(Colors.white, 0.35)
+                    : Colors.brown.withValues(alpha: 0.7),
               ),
             ),
         ],
@@ -256,8 +298,20 @@ class _SceneRenderer {
       _sunShape(x: 180, y: 40, size: 66),
       _cloud(left: 60, top: 60, w: 70, a: 0.45),
       _cloud(left: 250, top: 84, w: 56, a: 0.35),
-      _hill(left: -60, bottom: -30, w: 260, h: 150, color: onDark ? _lightGreen : _midGreen, alpha: onDark ? 0.5 : 0.6),
-      _hill(left: 170, bottom: -50, w: 300, h: 175, color: onDark ? _deepGreen : _lightGreen, alpha: onDark ? 0.6 : 0.75),
+      _hill(
+          left: -60,
+          bottom: -30,
+          w: 260,
+          h: 150,
+          color: onDark ? _lightGreen : _midGreen,
+          alpha: onDark ? 0.5 : 0.6),
+      _hill(
+          left: 170,
+          bottom: -50,
+          w: 300,
+          h: 175,
+          color: onDark ? _deepGreen : _lightGreen,
+          alpha: onDark ? 0.6 : 0.75),
       _cropRow(left: 96, bottom: 54, stalks: 10),
       _cropRow(left: 250, bottom: 40, stalks: 8),
       // tractor silhouette
@@ -273,7 +327,8 @@ class _SceneRenderer {
       Positioned(
         left: 60,
         bottom: 12,
-        child: Icon(Icons.agriculture_rounded, color: onDark ? _w(_gold, 0.8) : _gold, size: 34),
+        child: Icon(Icons.agriculture_rounded,
+            color: onDark ? _w(_gold, 0.8) : _gold, size: 34),
       ),
     ];
   }
@@ -305,7 +360,13 @@ class _SceneRenderer {
     return [
       _cloud(left: 44, top: 48, w: 62),
       _sunShape(x: 308, y: 40, size: 46),
-      _hill(left: -30, bottom: -40, w: 500, h: 170, color: onDark ? _midGreen : _lightGreen, alpha: onDark ? 0.5 : 0.7),
+      _hill(
+          left: -30,
+          bottom: -40,
+          w: 500,
+          h: 170,
+          color: onDark ? _midGreen : _lightGreen,
+          alpha: onDark ? 0.5 : 0.7),
       crate(40, 78, 64, emoji: '\uD83C\uDF45'),
       crate(118, 56, 84, emoji: '\uD83E\uDDC5'),
       crate(216, 84, 60, emoji: '\uD83C\uDF3E'),
@@ -333,7 +394,8 @@ class _SceneRenderer {
       Positioned(
         left: 24,
         bottom: 150,
-        child: Icon(Icons.storefront_rounded, color: onDark ? _w(_gold, 0.8) : _gold, size: 38),
+        child: Icon(Icons.storefront_rounded,
+            color: onDark ? _w(_gold, 0.8) : _gold, size: 38),
       ),
     ];
   }
@@ -345,7 +407,14 @@ class _SceneRenderer {
       _cloud(left: 156, top: 40, w: 96, a: 0.85),
       _cloud(left: 330, top: 120, w: 52, a: 0.4),
       // rain lines
-      for (final (x, y) in const [(250.0, 96.0), (270.0, 126.0), (290.0, 100.0), (310.0, 140.0), (330.0, 108.0), (350.0, 138.0)])
+      for (final (x, y) in const [
+        (250.0, 96.0),
+        (270.0, 126.0),
+        (290.0, 100.0),
+        (310.0, 140.0),
+        (330.0, 108.0),
+        (350.0, 138.0)
+      ])
         Positioned(
           left: x,
           top: y,
@@ -353,16 +422,34 @@ class _SceneRenderer {
             width: 3,
             height: 40,
             decoration: BoxDecoration(
-              color: onDark ? _w(Colors.lightBlueAccent, 0.7) : const Color(0xFF5B9BD5),
+              color: onDark
+                  ? _w(Colors.lightBlueAccent, 0.7)
+                  : const Color(0xFF5B9BD5),
               borderRadius: BorderRadius.circular(2),
             ),
           ),
         ),
-      _hill(left: -40, bottom: -30, w: 260, h: 140, color: onDark ? _deepGreen : _lightGreen, alpha: onDark ? 0.5 : 0.6),
-      _hill(left: 180, bottom: -50, w: 300, h: 165, color: onDark ? _midGreen : _midGreen, alpha: onDark ? 0.55 : 0.8),
+      _hill(
+          left: -40,
+          bottom: -30,
+          w: 260,
+          h: 140,
+          color: onDark ? _deepGreen : _lightGreen,
+          alpha: onDark ? 0.5 : 0.6),
+      _hill(
+          left: 180,
+          bottom: -50,
+          w: 300,
+          h: 165,
+          color: onDark ? _midGreen : _midGreen,
+          alpha: onDark ? 0.55 : 0.8),
       _cropRow(left: 80, bottom: 52, stalks: 10),
       _tree(left: 330, bottom: 52),
-      Positioned(top: 16, right: 20, child: Icon(Icons.wb_sunny, size: 30, color: onDark ? _w(_gold, 0.9) : _gold)),
+      Positioned(
+          top: 16,
+          right: 20,
+          child: Icon(Icons.wb_sunny,
+              size: 30, color: onDark ? _w(_gold, 0.9) : _gold)),
     ];
   }
 
@@ -370,7 +457,13 @@ class _SceneRenderer {
     return [
       _cloud(left: 60, top: 56, w: 60),
       _sunShape(x: 300, y: 44, size: 44),
-      _hill(left: -30, bottom: -40, w: 480, h: 160, color: onDark ? _midGreen : _lightGreen, alpha: onDark ? 0.5 : 0.7),
+      _hill(
+          left: -30,
+          bottom: -40,
+          w: 480,
+          h: 160,
+          color: onDark ? _midGreen : _lightGreen,
+          alpha: onDark ? 0.5 : 0.7),
       // tool shed
       Positioned(
         left: 282,
@@ -382,35 +475,51 @@ class _SceneRenderer {
               width: 78,
               height: 52,
               decoration: BoxDecoration(
-                color: onDark ? const Color(0xFF2A3A30) : const Color(0xFF8A5A33),
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(6)),
-                border: Border.all(color: onDark ? Colors.white24 : Colors.brown.shade300),
+                color:
+                    onDark ? const Color(0xFF2A3A30) : const Color(0xFF8A5A33),
+                borderRadius:
+                    const BorderRadius.vertical(top: Radius.circular(6)),
+                border: Border.all(
+                    color: onDark ? Colors.white24 : Colors.brown.shade300),
               ),
-              child: Icon(Icons.garage_outlined, color: onDark ? _w(_gold, 0.8) : Colors.white, size: 26),
+              child: Icon(Icons.garage_outlined,
+                  color: onDark ? _w(_gold, 0.8) : Colors.white, size: 26),
             ),
-            Container(width: 92, height: 8, color: onDark ? const Color(0xFF3A2F14) : Colors.brown),
+            Container(
+                width: 92,
+                height: 8,
+                color: onDark ? const Color(0xFF3A2F14) : Colors.brown),
           ],
         ),
       ),
       Positioned(
         left: 74,
         bottom: 64,
-        child: Icon(Icons.plumbing_rounded, color: onDark ? _w(Colors.white, 0.75) : const Color(0xFF4C6B8A), size: 42),
+        child: Icon(Icons.plumbing_rounded,
+            color: onDark ? _w(Colors.white, 0.75) : const Color(0xFF4C6B8A),
+            size: 42),
       ),
       Positioned(
         left: 130,
         bottom: 56,
-        child: Icon(Icons.hardware_rounded, color: onDark ? _w(Colors.white, 0.7) : const Color(0xFF7A4A25), size: 40),
+        child: Icon(Icons.hardware_rounded,
+            color: onDark ? _w(Colors.white, 0.7) : const Color(0xFF7A4A25),
+            size: 40),
       ),
       Positioned(
         left: 204,
         bottom: 72,
-        child: Icon(Icons.grass_rounded, color: onDark ? _w(_lightGreen, 0.9) : _midGreen, size: 40),
+        child: Icon(Icons.grass_rounded,
+            color: onDark ? _w(_lightGreen, 0.9) : _midGreen, size: 40),
       ),
       Positioned(
         left: 248,
         bottom: 150,
-        child: Icon(Icons.water_drop_rounded, color: onDark ? _w(Colors.lightBlueAccent, 0.8) : const Color(0xFF5B9BD5), size: 26),
+        child: Icon(Icons.water_drop_rounded,
+            color: onDark
+                ? _w(Colors.lightBlueAccent, 0.8)
+                : const Color(0xFF5B9BD5),
+            size: 26),
       ),
     ];
   }
@@ -419,12 +528,19 @@ class _SceneRenderer {
     return [
       _cloud(left: 60, top: 46, w: 58),
       _sunShape(x: 306, y: 40, size: 46),
-      _hill(left: -40, bottom: -40, w: 520, h: 170, color: onDark ? _midGreen : _lightGreen, alpha: onDark ? 0.5 : 0.7),
+      _hill(
+          left: -40,
+          bottom: -40,
+          w: 520,
+          h: 170,
+          color: onDark ? _midGreen : _lightGreen,
+          alpha: onDark ? 0.5 : 0.7),
       // big leaf
       Positioned(
         left: 118,
         bottom: 60,
-        child: Icon(Icons.eco_rounded, color: onDark ? _w(_lightGreen, 0.95) : _deepGreen, size: 120),
+        child: Icon(Icons.eco_rounded,
+            color: onDark ? _w(_lightGreen, 0.95) : _deepGreen, size: 120),
       ),
       // magnifier
       Positioned(
@@ -458,7 +574,8 @@ class _SceneRenderer {
       Positioned(
         left: 128,
         bottom: 150,
-        child: Icon(Icons.check_circle_rounded, color: onDark ? _w(_gold, 0.95) : _gold, size: 30),
+        child: Icon(Icons.check_circle_rounded,
+            color: onDark ? _w(_gold, 0.95) : _gold, size: 30),
       ),
     ];
   }
@@ -467,33 +584,45 @@ class _SceneRenderer {
     return [
       _cloud(left: 44, top: 48, w: 62),
       _sunShape(x: 306, y: 40, size: 48),
-      _hill(left: -30, bottom: -40, w: 500, h: 168, color: onDark ? _midGreen : _lightGreen, alpha: onDark ? 0.52 : 0.72),
+      _hill(
+          left: -30,
+          bottom: -40,
+          w: 500,
+          h: 168,
+          color: onDark ? _midGreen : _lightGreen,
+          alpha: onDark ? 0.52 : 0.72),
       // grain sacks
       Positioned(
         left: 56,
         bottom: 70,
-        child: Icon(Icons.inventory_2_rounded, color: onDark ? _w(_gold, 0.85) : _gold, size: 48),
+        child: Icon(Icons.inventory_2_rounded,
+            color: onDark ? _w(_gold, 0.85) : _gold, size: 48),
       ),
       Positioned(
         left: 120,
         bottom: 58,
-        child: Icon(Icons.inventory_2_rounded, color: onDark ? _w(Colors.white, 0.6) : const Color(0xFFB07C44), size: 54),
+        child: Icon(Icons.inventory_2_rounded,
+            color: onDark ? _w(Colors.white, 0.6) : const Color(0xFFB07C44),
+            size: 54),
       ),
       // handshake / deal
       Positioned(
         left: 196,
         bottom: 84,
-        child: Icon(Icons.handshake_rounded, color: onDark ? _w(_lightGreen, 0.95) : _deepGreen, size: 74),
+        child: Icon(Icons.handshake_rounded,
+            color: onDark ? _w(_lightGreen, 0.95) : _deepGreen, size: 74),
       ),
       Positioned(
         left: 292,
         bottom: 70,
-        child: Icon(Icons.payments_rounded, color: onDark ? _w(_gold, 0.9) : _gold, size: 40),
+        child: Icon(Icons.payments_rounded,
+            color: onDark ? _w(_gold, 0.9) : _gold, size: 40),
       ),
       Positioned(
         left: 322,
         bottom: 136,
-        child: Icon(Icons.trending_up_rounded, color: onDark ? _w(Colors.white, 0.8) : _midGreen, size: 34),
+        child: Icon(Icons.trending_up_rounded,
+            color: onDark ? _w(Colors.white, 0.8) : _midGreen, size: 34),
       ),
     ];
   }
@@ -502,13 +631,34 @@ class _SceneRenderer {
     return [
       _sunShape(x: 330, y: 46, size: 48),
       _cloud(left: 70, top: 56, w: 60),
-      _hill(left: -40, bottom: -20, w: 240, h: 140, color: onDark ? _deepGreen : _lightGreen, alpha: onDark ? 0.5 : 0.55),
-      _hill(left: 170, bottom: -40, w: 290, h: 165, color: onDark ? _midGreen : _midGreen, alpha: onDark ? 0.55 : 0.85),
+      _hill(
+          left: -40,
+          bottom: -20,
+          w: 240,
+          h: 140,
+          color: onDark ? _deepGreen : _lightGreen,
+          alpha: onDark ? 0.5 : 0.55),
+      _hill(
+          left: 170,
+          bottom: -40,
+          w: 290,
+          h: 165,
+          color: onDark ? _midGreen : _midGreen,
+          alpha: onDark ? 0.55 : 0.85),
       _cropRow(left: 90, bottom: 62, stalks: 9),
       _cropRow(left: 246, bottom: 48, stalks: 8),
       _tree(left: 250, bottom: 56),
-      if (onDark) Positioned(left: 30, bottom: 26, child: Icon(Icons.local_florist_rounded, size: 40, color: _w(_gold, 0.85)))
-      else Positioned(left: 30, bottom: 26, child: Icon(Icons.local_florist_rounded, size: 40, color: _gold)),
+      if (onDark)
+        Positioned(
+            left: 30,
+            bottom: 26,
+            child: Icon(Icons.local_florist_rounded,
+                size: 40, color: _w(_gold, 0.85)))
+      else
+        Positioned(
+            left: 30,
+            bottom: 26,
+            child: Icon(Icons.local_florist_rounded, size: 40, color: _gold)),
     ];
   }
 }

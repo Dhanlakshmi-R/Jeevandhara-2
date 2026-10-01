@@ -50,15 +50,13 @@ class ThemeColors {
   static ThemeColors get light => _light;
   static ThemeColors get dark => _dark;
 
-  Color get primary =>
-      isDark ? const Color(0xFF4FA77A) : AppColors.primary;
+  Color get primary => isDark ? const Color(0xFF4FA77A) : AppColors.primary;
   Color get primaryDark =>
       isDark ? const Color(0xFF2F8B5D) : AppColors.primaryDark;
   Color get primaryLight =>
       isDark ? const Color(0xFF1E3A2B) : AppColors.primaryLight;
 
-  Color get secondary =>
-      isDark ? const Color(0xFF70C066) : AppColors.secondary;
+  Color get secondary => isDark ? const Color(0xFF70C066) : AppColors.secondary;
   Color get secondaryLight =>
       isDark ? const Color(0xFF213B27) : AppColors.secondaryLight;
 
@@ -70,19 +68,16 @@ class ThemeColors {
 
   Color get background =>
       isDark ? const Color(0xFF111B16) : AppColors.background;
-  Color get surface =>
-      isDark ? const Color(0xFF17241C) : AppColors.card;
+  Color get surface => isDark ? const Color(0xFF17241C) : AppColors.card;
   Color get surfaceAlt =>
       isDark ? const Color(0xFF1E2D23) : const Color(0xFFF0F5F1);
-  Color get surfaceElevated =>
-      isDark ? const Color(0xFF223127) : Colors.white;
+  Color get surfaceElevated => isDark ? const Color(0xFF223127) : Colors.white;
 
   /// Slightly recessed surface (desktop sidebar, chips).
   Color get sidebarSurface =>
       isDark ? const Color(0xFF0E1813) : const Color(0xFFFBFDFB);
 
-  Color get border =>
-      isDark ? const Color(0xFF2A3A30) : AppColors.border;
+  Color get border => isDark ? const Color(0xFF2A3A30) : AppColors.border;
   Color get divider =>
       isDark ? const Color(0xFF223129) : const Color(0xFFEFF4F0);
 
@@ -97,17 +92,15 @@ class ThemeColors {
       isDark ? const Color(0xFF2A2200) : const Color(0xFF3D3200);
   Color get textOnPrimary => Colors.white;
 
-  Color get positive =>
-      isDark ? const Color(0xFF58C98B) : AppColors.positive;
-  Color get negative =>
-      isDark ? const Color(0xFFE06B5E) : AppColors.negative;
+  Color get positive => isDark ? const Color(0xFF58C98B) : AppColors.positive;
+  Color get negative => isDark ? const Color(0xFFE06B5E) : AppColors.negative;
   Color get warning => isDark ? const Color(0xFFF2B544) : AppColors.warning;
-  Color get danger =>
-      isDark ? const Color(0xFFE06060) : AppColors.danger;
+  Color get danger => isDark ? const Color(0xFFE06060) : AppColors.danger;
   Color get info => isDark ? const Color(0xFF4FA3C6) : AppColors.info;
 
-  Color get shadow =>
-      isDark ? Colors.black.withValues(alpha: 0.45) : Colors.black.withValues(alpha: 0.06);
+  Color get shadow => isDark
+      ? Colors.black.withValues(alpha: 0.45)
+      : Colors.black.withValues(alpha: 0.06);
 
   /// Tinted status surfaces for badges, alert cards and message rows.
   Color get successSurface =>

@@ -1,9 +1,9 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import '../theme/colors.dart';
-import '../widgets/layout.dart';
-import '../widgets/ui/buttons.dart';
-import '../widgets/ui/cards.dart';
+import 'package:jeevandhara2/theme/colors.dart';
+import 'package:jeevandhara2/widgets/layout.dart';
+import 'package:jeevandhara2/widgets/ui/buttons.dart';
+import 'package:jeevandhara2/widgets/ui/cards.dart';
 
 class QualityAnalysisScreen extends StatefulWidget {
   const QualityAnalysisScreen({super.key});
@@ -79,7 +79,9 @@ class _QualityAnalysisScreenState extends State<QualityAnalysisScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Crop Quality Analysis'),
-        actions: const [Padding(padding: EdgeInsets.only(right: 12), child: ThemeToggle())],
+        actions: const [
+          Padding(padding: EdgeInsets.only(right: 12), child: ThemeToggle())
+        ],
       ),
       body: ListView(
         padding: const EdgeInsets.all(16),
@@ -103,11 +105,17 @@ class _QualityAnalysisScreenState extends State<QualityAnalysisScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: const [
-                _StepRow(icon: Icons.camera_alt_outlined, text: 'Take or upload a clear photo of your crop'),
+                _StepRow(
+                    icon: Icons.camera_alt_outlined,
+                    text: 'Take or upload a clear photo of your crop'),
                 SizedBox(height: 12),
-                _StepRow(icon: Icons.smart_toy_outlined, text: 'AI checks health, disease, grade & cleanliness'),
+                _StepRow(
+                    icon: Icons.smart_toy_outlined,
+                    text: 'AI checks health, disease, grade & cleanliness'),
                 SizedBox(height: 12),
-                _StepRow(icon: Icons.insights_outlined, text: 'Get a quality score and suggested price range'),
+                _StepRow(
+                    icon: Icons.insights_outlined,
+                    text: 'Get a quality score and suggested price range'),
               ],
             ),
           ),
@@ -161,7 +169,10 @@ class _QualityAnalysisScreenState extends State<QualityAnalysisScreen> {
             style: TextStyle(fontSize: 13, color: c.textSecondary, height: 1.5),
           ),
           const SizedBox(height: 18),
-          AppPrimaryButton(label: 'Analyze Crop Quality', icon: Icons.biotech, onPressed: _startAnalysis),
+          AppPrimaryButton(
+              label: 'Analyze Crop Quality',
+              icon: Icons.biotech,
+              onPressed: _startAnalysis),
         ],
       ),
     );
@@ -169,7 +180,9 @@ class _QualityAnalysisScreenState extends State<QualityAnalysisScreen> {
 
   Widget _buildProgress() {
     final c = context.colors;
-    final stage = _phase == _Phase.uploading ? 'Uploading media\u2026' : 'AI analyzing quality\u2026';
+    final stage = _phase == _Phase.uploading
+        ? 'Uploading media\u2026'
+        : 'AI analyzing quality\u2026';
     return AppCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -180,9 +193,11 @@ class _QualityAnalysisScreenState extends State<QualityAnalysisScreen> {
                   ? SizedBox(
                       width: 20,
                       height: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2.5, color: c.primary),
+                      child: CircularProgressIndicator(
+                          strokeWidth: 2.5, color: c.primary),
                     )
-                  : Icon(Icons.cloud_upload_outlined, color: c.primary, size: 22),
+                  : Icon(Icons.cloud_upload_outlined,
+                      color: c.primary, size: 22),
               const SizedBox(width: 10),
               Text(
                 stage,
@@ -232,7 +247,8 @@ class _StepRow extends StatelessWidget {
         Expanded(
           child: Text(
             text,
-            style: TextStyle(fontSize: 13.5, color: c.textSecondary, height: 1.4),
+            style:
+                TextStyle(fontSize: 13.5, color: c.textSecondary, height: 1.4),
           ),
         ),
       ],
@@ -313,7 +329,9 @@ class _ResultCard extends StatelessWidget {
                               color: c.textPrimary,
                             ),
                           ),
-                          Text('/100', style: TextStyle(fontSize: 11, color: c.textSecondary)),
+                          Text('/100',
+                              style: TextStyle(
+                                  fontSize: 11, color: c.textSecondary)),
                         ],
                       ),
                     ),
@@ -325,7 +343,11 @@ class _ResultCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _ResultLine(label: 'Quality grade', value: grade, icon: Icons.verified, color: c.positive),
+                    _ResultLine(
+                        label: 'Quality grade',
+                        value: grade,
+                        icon: Icons.verified,
+                        color: c.positive),
                     const SizedBox(height: 10),
                     _ResultLine(
                       label: 'Disease risk',
@@ -366,7 +388,8 @@ class _ResultCard extends StatelessWidget {
           const SizedBox(height: 8),
           SizedBox(
             width: double.infinity,
-            child: AppTonalButton(label: 'Analyze another crop', onPressed: onReset),
+            child: AppTonalButton(
+                label: 'Analyze another crop', onPressed: onReset),
           ),
         ],
       ),
@@ -395,7 +418,8 @@ class _ResultLine extends StatelessWidget {
         Icon(icon, size: 18, color: color),
         const SizedBox(width: 8),
         Expanded(
-          child: Text(label, style: TextStyle(fontSize: 12.5, color: c.textSecondary)),
+          child: Text(label,
+              style: TextStyle(fontSize: 12.5, color: c.textSecondary)),
         ),
         Text(
           value,

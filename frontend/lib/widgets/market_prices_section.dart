@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import '../models/market_price.dart';
-import '../theme/colors.dart';
+import 'package:jeevandhara2/models/market_price.dart';
+import 'package:jeevandhara2/theme/colors.dart';
 
 class MarketPricesSection extends StatelessWidget {
   final List<MarketPrice> prices;
@@ -19,7 +19,8 @@ class MarketPricesSection extends StatelessWidget {
         color: AppColors.card,
         borderRadius: BorderRadius.circular(16),
         boxShadow: const [
-          BoxShadow(color: Color(0x14000000), blurRadius: 6, offset: Offset(0, 2)),
+          BoxShadow(
+              color: Color(0x14000000), blurRadius: 6, offset: Offset(0, 2)),
         ],
       ),
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
@@ -31,7 +32,10 @@ class MarketPricesSection extends StatelessWidget {
             children: [
               const Text(
                 "Today's Market Prices",
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.textDark),
+                style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.textDark),
               ),
               TextButton(onPressed: onViewAll, child: const Text('View all')),
             ],
@@ -65,7 +69,10 @@ class _PriceRow extends StatelessWidget {
           Expanded(
             child: Text(
               price.crop,
-              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.textDark),
+              style: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textDark),
             ),
           ),
           Column(
@@ -73,7 +80,10 @@ class _PriceRow extends StatelessWidget {
             children: [
               Text(
                 price.priceLabel,
-                style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppColors.textDark),
+                style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.textDark),
               ),
               const SizedBox(height: 2),
               Row(
@@ -86,7 +96,10 @@ class _PriceRow extends StatelessWidget {
                   const SizedBox(width: 2),
                   Text(
                     '${price.changePercent.abs().toStringAsFixed(1)}%',
-                    style: TextStyle(fontSize: 12, color: trendColor, fontWeight: FontWeight.w600),
+                    style: TextStyle(
+                        fontSize: 12,
+                        color: trendColor,
+                        fontWeight: FontWeight.w600),
                   ),
                 ],
               ),

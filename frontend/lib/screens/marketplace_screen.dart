@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
-import '../models/product.dart';
-import '../theme/colors.dart';
-import '../theme/locale.dart';
-import '../widgets/layout.dart';
-import '../widgets/ui/buttons.dart';
-import '../widgets/ui/cards.dart';
-import '../widgets/ui/states.dart';
+import 'package:jeevandhara2/models/product.dart';
+import 'package:jeevandhara2/theme/colors.dart';
+import 'package:jeevandhara2/theme/locale.dart';
+import 'package:jeevandhara2/widgets/layout.dart';
+import 'package:jeevandhara2/widgets/ui/buttons.dart';
+import 'package:jeevandhara2/widgets/ui/cards.dart';
+import 'package:jeevandhara2/widgets/ui/states.dart';
 
 class MarketplaceScreen extends StatefulWidget {
   const MarketplaceScreen({super.key});
@@ -19,8 +19,9 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
   String _category = 'All';
   final List<MarketplaceProduct> _cart = [];
 
-  List<MarketplaceProduct> get _filtered =>
-      _category == 'All' ? _products : _products.where((p) => p.category == _category).toList();
+  List<MarketplaceProduct> get _filtered => _category == 'All'
+      ? _products
+      : _products.where((p) => p.category == _category).toList();
 
   void _addToCart(MarketplaceProduct product) {
     setState(() => _cart.add(product));
@@ -28,7 +29,8 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
       SnackBar(
         content: Text('${product.name} added to cart'),
         duration: const Duration(seconds: 1),
-        action: SnackBarAction(label: 'View cart', onPressed: () => _openCart()),
+        action:
+            SnackBarAction(label: 'View cart', onPressed: () => _openCart()),
       ),
     );
   }
@@ -87,18 +89,25 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
                 height: 46,
                 child: ListView(
                   scrollDirection: Axis.horizontal,
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   children: MarketplaceProduct.categories
                       .map((cat) => Padding(
                             padding: const EdgeInsets.only(right: 8),
                             child: ChoiceChip(
-                              label: Text(cat, style: const TextStyle(fontSize: 12.5)),
+                              label: Text(cat,
+                                  style: const TextStyle(fontSize: 12.5)),
                               selected: _category == cat,
-                              onSelected: (_) => setState(() => _category = cat),
+                              onSelected: (_) =>
+                                  setState(() => _category = cat),
                               selectedColor: c.primaryLight,
-                              side: BorderSide(color: _category == cat ? c.primary : c.border),
+                              side: BorderSide(
+                                  color:
+                                      _category == cat ? c.primary : c.border),
                               labelStyle: TextStyle(
-                                color: _category == cat ? c.primaryDark : c.textSecondary,
+                                color: _category == cat
+                                    ? c.primaryDark
+                                    : c.textSecondary,
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
@@ -153,7 +162,8 @@ class _CartButton extends StatelessWidget {
             onTap: onTap,
             child: Padding(
               padding: const EdgeInsets.all(10),
-              child: Icon(Icons.shopping_cart_outlined, size: 21, color: c.textPrimary),
+              child: Icon(Icons.shopping_cart_outlined,
+                  size: 21, color: c.textPrimary),
             ),
           ),
         ),
@@ -208,9 +218,12 @@ class _ProductCard extends StatelessWidget {
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                borderRadius:
+                    const BorderRadius.vertical(top: Radius.circular(16)),
               ),
-              child: Center(child: Text(product.emoji, style: const TextStyle(fontSize: 42))),
+              child: Center(
+                  child: Text(product.emoji,
+                      style: const TextStyle(fontSize: 42))),
             ),
           ),
           Padding(
@@ -276,17 +289,22 @@ class _ProductCard extends StatelessWidget {
                       ? FilledButton.icon(
                           onPressed: onAdd,
                           style: FilledButton.styleFrom(
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10)),
                           ),
                           icon: const Icon(Icons.add_shopping_cart, size: 16),
-                          label: const Text('Add to Cart', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                          label: const Text('Add to Cart',
+                              style: TextStyle(
+                                  fontSize: 12, fontWeight: FontWeight.w600)),
                         )
                       : OutlinedButton(
                           onPressed: null,
                           style: OutlinedButton.styleFrom(
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10)),
                           ),
-                          child: const Text('Out of stock', style: TextStyle(fontSize: 12)),
+                          child: const Text('Out of stock',
+                              style: TextStyle(fontSize: 12)),
                         ),
                 ),
               ],
@@ -322,7 +340,9 @@ class _CartScreenState extends State<_CartScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('My Cart'),
-        actions: const [Padding(padding: EdgeInsets.only(right: 12), child: ThemeToggle())],
+        actions: const [
+          Padding(padding: EdgeInsets.only(right: 12), child: ThemeToggle())
+        ],
       ),
       body: _cart.isEmpty
           ? const EmptyState(
@@ -347,7 +367,9 @@ class _CartScreenState extends State<_CartScreen> {
                               color: c.primaryLight,
                               borderRadius: BorderRadius.circular(12),
                             ),
-                            child: Center(child: Text(p.emoji, style: const TextStyle(fontSize: 24))),
+                            child: Center(
+                                child: Text(p.emoji,
+                                    style: const TextStyle(fontSize: 24))),
                           ),
                           const SizedBox(width: 12),
                           Expanded(
@@ -366,7 +388,8 @@ class _CartScreenState extends State<_CartScreen> {
                                 ),
                                 Text(
                                   '${p.priceLabel} ${p.category}',
-                                  style: TextStyle(fontSize: 11.5, color: c.textSecondary),
+                                  style: TextStyle(
+                                      fontSize: 11.5, color: c.textSecondary),
                                 ),
                               ],
                             ),
@@ -386,21 +409,30 @@ class _CartScreenState extends State<_CartScreen> {
                 const SizedBox(height: 8),
                 Text(
                   'Payment method',
-                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: c.textPrimary),
+                  style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      color: c.textPrimary),
                 ),
                 const SizedBox(height: 8),
                 AppCard(
                   padding: EdgeInsets.zero,
                   child: Column(
                     children: [
-                      for (final m in ['Cash on delivery', 'UPI', 'Credit / Debit card'])
+                      for (final m in [
+                        'Cash on delivery',
+                        'UPI',
+                        'Credit / Debit card'
+                      ])
                         RadioListTile<String>(
                           dense: true,
                           value: m,
                           groupValue: _payment,
-                          onChanged: (v) => setState(() => _payment = v ?? 'Cash on delivery'),
+                          onChanged: (v) => setState(
+                              () => _payment = v ?? 'Cash on delivery'),
                           activeColor: c.primary,
-                          title: Text(m, style: const TextStyle(fontSize: 13.5)),
+                          title:
+                              Text(m, style: const TextStyle(fontSize: 13.5)),
                         ),
                     ],
                   ),
@@ -408,7 +440,10 @@ class _CartScreenState extends State<_CartScreen> {
                 const SizedBox(height: 16),
                 Text(
                   'Delivery method',
-                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: c.textPrimary),
+                  style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      color: c.textPrimary),
                 ),
                 const SizedBox(height: 8),
                 AppCard(
@@ -420,9 +455,11 @@ class _CartScreenState extends State<_CartScreen> {
                           dense: true,
                           value: d,
                           groupValue: _delivery,
-                          onChanged: (v) => setState(() => _delivery = v ?? 'Village pickup point'),
+                          onChanged: (v) => setState(
+                              () => _delivery = v ?? 'Village pickup point'),
                           activeColor: c.primary,
-                          title: Text(d, style: const TextStyle(fontSize: 13.5)),
+                          title:
+                              Text(d, style: const TextStyle(fontSize: 13.5)),
                         ),
                     ],
                   ),
@@ -431,22 +468,34 @@ class _CartScreenState extends State<_CartScreen> {
                 AppCard(
                   child: Column(
                     children: [
-                      _CartBillRow(label: 'Subtotal (${_cart.length} items)', value: '\u20B9${_subtotal.toStringAsFixed(0)}'),
+                      _CartBillRow(
+                          label: 'Subtotal (${_cart.length} items)',
+                          value: '\u20B9${_subtotal.toStringAsFixed(0)}'),
                       const Divider(height: 1),
-                      _CartBillRow(label: 'Delivery fee', value: _deliveryFee == 0 ? 'Free' : '\u20B9$_deliveryFee'),
+                      _CartBillRow(
+                          label: 'Delivery fee',
+                          value: _deliveryFee == 0
+                              ? 'Free'
+                              : '\u20B9$_deliveryFee'),
                       const Divider(height: 1),
-                      _CartBillRow(label: 'Total', value: '\u20B9${_total.toStringAsFixed(0)}', bold: true),
+                      _CartBillRow(
+                          label: 'Total',
+                          value: '\u20B9${_total.toStringAsFixed(0)}',
+                          bold: true),
                     ],
                   ),
                 ),
                 const SizedBox(height: 20),
                 AppPrimaryButton(
-                  label: 'Place Order \u2022 \u20B9${_total.toStringAsFixed(0)}',
+                  label:
+                      'Place Order \u2022 \u20B9${_total.toStringAsFixed(0)}',
                   icon: Icons.local_mall_outlined,
                   onPressed: () {
                     setState(() => widget.cart.clear());
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Order placed! Track it in Notifications.')),
+                      const SnackBar(
+                          content:
+                              Text('Order placed! Track it in Notifications.')),
                     );
                     Navigator.of(context).pop();
                   },
@@ -463,7 +512,8 @@ class _CartBillRow extends StatelessWidget {
   final String value;
   final bool bold;
 
-  const _CartBillRow({required this.label, required this.value, this.bold = false});
+  const _CartBillRow(
+      {required this.label, required this.value, this.bold = false});
 
   @override
   Widget build(BuildContext context) {

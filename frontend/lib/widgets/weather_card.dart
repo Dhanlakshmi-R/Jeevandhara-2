@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import '../models/weather.dart';
-import '../theme/colors.dart';
+import 'package:jeevandhara2/models/weather.dart';
+import 'package:jeevandhara2/theme/colors.dart';
 
 class WeatherCard extends StatelessWidget {
   final Weather weather;
@@ -39,7 +39,10 @@ class WeatherCard extends StatelessWidget {
               Expanded(
                 child: Text(
                   weather.location,
-                  style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w500),
+                  style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500),
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
@@ -58,7 +61,8 @@ class WeatherCard extends StatelessWidget {
                   fontWeight: FontWeight.bold,
                 ),
               ),
-              Icon(_iconForCondition(weather.condition), color: Colors.white, size: 44),
+              Icon(_iconForCondition(weather.condition),
+                  color: Colors.white, size: 44),
             ],
           ),
           const SizedBox(height: 8),
@@ -66,7 +70,10 @@ class WeatherCard extends StatelessWidget {
             children: [
               Text(
                 weather.condition,
-                style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w500),
+                style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w500),
               ),
               const Spacer(),
               const Icon(Icons.water_drop, color: Colors.white70, size: 16),
@@ -91,7 +98,8 @@ class WeatherCard extends StatelessWidget {
                     tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   ),
                   icon: const Icon(Icons.calendar_month, size: 16),
-                  label: const Text('7-day forecast', style: TextStyle(fontWeight: FontWeight.w600)),
+                  label: const Text('7-day forecast',
+                      style: TextStyle(fontWeight: FontWeight.w600)),
                 ),
               ],
             ),

@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
-import '../models/tool.dart';
-import '../theme/colors.dart';
-import '../widgets/layout.dart';
-import '../widgets/ui/app_modal.dart';
-import '../widgets/ui/buttons.dart';
-import '../widgets/ui/cards.dart';
-import '../widgets/ui/states.dart';
+import 'package:jeevandhara2/models/tool.dart';
+import 'package:jeevandhara2/theme/colors.dart';
+import 'package:jeevandhara2/widgets/layout.dart';
+import 'package:jeevandhara2/widgets/ui/app_modal.dart';
+import 'package:jeevandhara2/widgets/ui/buttons.dart';
+import 'package:jeevandhara2/widgets/ui/cards.dart';
+import 'package:jeevandhara2/widgets/ui/states.dart';
 
 class ToolRentalScreen extends StatefulWidget {
   const ToolRentalScreen({super.key});
@@ -26,8 +26,9 @@ class _ToolRentalScreenState extends State<ToolRentalScreen> {
     return ['All', ...cats];
   }
 
-  List<Tool> get _filtered =>
-      _category == 'All' ? _tools : _tools.where((t) => t.category == _category).toList();
+  List<Tool> get _filtered => _category == 'All'
+      ? _tools
+      : _tools.where((t) => t.category == _category).toList();
 
   void _openDetails(Tool tool) {
     Navigator.of(context).push(
@@ -50,18 +51,25 @@ class _ToolRentalScreenState extends State<ToolRentalScreen> {
                 height: 46,
                 child: ListView(
                   scrollDirection: Axis.horizontal,
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   children: _categories
                       .map((cat) => Padding(
                             padding: const EdgeInsets.only(right: 8),
                             child: ChoiceChip(
-                              label: Text(cat, style: const TextStyle(fontSize: 12.5)),
+                              label: Text(cat,
+                                  style: const TextStyle(fontSize: 12.5)),
                               selected: _category == cat,
-                              onSelected: (_) => setState(() => _category = cat),
+                              onSelected: (_) =>
+                                  setState(() => _category = cat),
                               selectedColor: c.primaryLight,
-                              side: BorderSide(color: _category == cat ? c.primary : c.border),
+                              side: BorderSide(
+                                  color:
+                                      _category == cat ? c.primary : c.border),
                               labelStyle: TextStyle(
-                                color: _category == cat ? c.primaryDark : c.textSecondary,
+                                color: _category == cat
+                                    ? c.primaryDark
+                                    : c.textSecondary,
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
@@ -75,7 +83,8 @@ class _ToolRentalScreenState extends State<ToolRentalScreen> {
                     if (constraints.maxWidth >= 900) {
                       return GridView.builder(
                         padding: const EdgeInsets.all(16),
-                        gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                        gridDelegate:
+                            const SliverGridDelegateWithMaxCrossAxisExtent(
                           maxCrossAxisExtent: 340,
                           mainAxisExtent: 170,
                           mainAxisSpacing: 12,
@@ -135,7 +144,9 @@ class _ToolCard extends StatelessWidget {
                   color: c.primaryLight,
                   borderRadius: BorderRadius.circular(14),
                 ),
-                child: Center(child: Text(tool.emoji, style: const TextStyle(fontSize: 28))),
+                child: Center(
+                    child:
+                        Text(tool.emoji, style: const TextStyle(fontSize: 28))),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -160,7 +171,8 @@ class _ToolCard extends StatelessWidget {
                     const SizedBox(height: 5),
                     Row(
                       children: [
-                        const Icon(Icons.star, size: 14, color: Color(0xFFF59E0B)),
+                        const Icon(Icons.star,
+                            size: 14, color: Color(0xFFF59E0B)),
                         const SizedBox(width: 3),
                         Text(
                           tool.ownerRating.toStringAsFixed(1),
@@ -202,7 +214,8 @@ class _ToolCard extends StatelessWidget {
                       color: c.primary,
                     ),
                   ),
-                  Text('/day', style: TextStyle(fontSize: 11, color: c.textSecondary)),
+                  Text('/day',
+                      style: TextStyle(fontSize: 11, color: c.textSecondary)),
                   const SizedBox(height: 6),
                   Icon(Icons.chevron_right, color: c.textSecondary),
                 ],
@@ -245,7 +258,9 @@ class _ToolDetailScreenState extends State<_ToolDetailScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Rent a Tool'),
-        actions: const [Padding(padding: EdgeInsets.only(right: 12), child: ThemeToggle())],
+        actions: const [
+          Padding(padding: EdgeInsets.only(right: 12), child: ThemeToggle())
+        ],
       ),
       body: ListView(
         padding: const EdgeInsets.all(16),
@@ -259,7 +274,9 @@ class _ToolDetailScreenState extends State<_ToolDetailScreen> {
                   color: c.primaryLight,
                   borderRadius: BorderRadius.circular(16),
                 ),
-                child: Center(child: Text(widget.tool.emoji, style: const TextStyle(fontSize: 32))),
+                child: Center(
+                    child: Text(widget.tool.emoji,
+                        style: const TextStyle(fontSize: 32))),
               ),
               const SizedBox(width: 14),
               Expanded(
@@ -281,7 +298,8 @@ class _ToolDetailScreenState extends State<_ToolDetailScreen> {
                     const SizedBox(height: 4),
                     Row(
                       children: [
-                        const Icon(Icons.star, size: 15, color: Color(0xFFF59E0B)),
+                        const Icon(Icons.star,
+                            size: 15, color: Color(0xFFF59E0B)),
                         const SizedBox(width: 3),
                         Text(
                           '${widget.tool.ownerRating} (12 reviews)',
@@ -302,13 +320,17 @@ class _ToolDetailScreenState extends State<_ToolDetailScreen> {
           AppCard(
             child: Text(
               widget.tool.description,
-              style: TextStyle(fontSize: 13.5, color: c.textSecondary, height: 1.5),
+              style: TextStyle(
+                  fontSize: 13.5, color: c.textSecondary, height: 1.5),
             ),
           ),
           const SizedBox(height: 20),
           Text(
             'Select rental dates',
-            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: c.textPrimary),
+            style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+                color: c.textPrimary),
           ),
           const SizedBox(height: 10),
           InkWell(
@@ -318,8 +340,9 @@ class _ToolDetailScreenState extends State<_ToolDetailScreen> {
                 context: context,
                 firstDate: now,
                 lastDate: now.add(const Duration(days: 90)),
-                initialDateRange:
-                    _range ?? DateTimeRange(start: now, end: now.add(const Duration(days: 2))),
+                initialDateRange: _range ??
+                    DateTimeRange(
+                        start: now, end: now.add(const Duration(days: 2))),
                 helpText: 'Select rental dates',
               );
               if (range != null) {
@@ -358,13 +381,18 @@ class _ToolDetailScreenState extends State<_ToolDetailScreen> {
           Wrap(
             spacing: 6,
             children: [
-              for (final slot in ['07:00 \u2013 11:00 AM', '11:00 AM \u2013 03:00 PM', '03:00 \u2013 07:00 PM'])
+              for (final slot in [
+                '07:00 \u2013 11:00 AM',
+                '11:00 AM \u2013 03:00 PM',
+                '03:00 \u2013 07:00 PM'
+              ])
                 ChoiceChip(
                   label: Text(slot, style: const TextStyle(fontSize: 11.5)),
                   selected: _timeSlot == slot,
                   onSelected: (_) => setState(() => _timeSlot = slot),
                   selectedColor: c.primaryLight,
-                  side: BorderSide(color: _timeSlot == slot ? c.primary : c.border),
+                  side: BorderSide(
+                      color: _timeSlot == slot ? c.primary : c.border),
                   labelStyle: TextStyle(
                     color: _timeSlot == slot ? c.primaryDark : c.textSecondary,
                     fontWeight: FontWeight.w600,
@@ -375,7 +403,10 @@ class _ToolDetailScreenState extends State<_ToolDetailScreen> {
           const SizedBox(height: 20),
           Text(
             'Delivery address',
-            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: c.textPrimary),
+            style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+                color: c.textPrimary),
           ),
           const SizedBox(height: 10),
           TextField(
@@ -395,7 +426,8 @@ class _ToolDetailScreenState extends State<_ToolDetailScreen> {
               Expanded(
                 child: Text(
                   'Tool will be delivered to your farm and picked up after use (\u20B9200 delivery per trip).',
-                  style: TextStyle(fontSize: 12.5, color: c.textSecondary, height: 1.4),
+                  style: TextStyle(
+                      fontSize: 12.5, color: c.textSecondary, height: 1.4),
                 ),
               ),
             ],
@@ -409,13 +441,20 @@ class _ToolDetailScreenState extends State<_ToolDetailScreen> {
                   value: '\u20B9${widget.tool.pricePerDay * _duration}',
                 ),
                 const Divider(height: 1),
-                const _BillRow(label: '\u20B9200 delivery fee', value: '\u20B9200'),
+                const _BillRow(
+                    label: '\u20B9200 delivery fee', value: '\u20B9200'),
                 if (widget.tool.ownerRating > 4.7) ...[
                   const Divider(height: 1),
-                  const _BillRow(label: 'Early-bird discount', value: '-\u20B9100', highlight: true),
+                  const _BillRow(
+                      label: 'Early-bird discount',
+                      value: '-\u20B9100',
+                      highlight: true),
                 ],
                 const Divider(height: 1),
-                _BillRow(label: 'Total', value: '\u20B9${_total.toStringAsFixed(0)}', bold: true),
+                _BillRow(
+                    label: 'Total',
+                    value: '\u20B9${_total.toStringAsFixed(0)}',
+                    bold: true),
               ],
             ),
           ),
@@ -426,7 +465,8 @@ class _ToolDetailScreenState extends State<_ToolDetailScreen> {
             onPressed: _range == null
                 ? () {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Please select rental dates first')),
+                      const SnackBar(
+                          content: Text('Please select rental dates first')),
                     );
                   }
                 : () async {
@@ -441,13 +481,18 @@ class _ToolDetailScreenState extends State<_ToolDetailScreen> {
                           const SizedBox(height: 4),
                           _BillRow(label: 'Slot', value: _timeSlot ?? '-'),
                           const SizedBox(height: 4),
-                          _BillRow(label: 'Total', value: '\u20B9${_total.toStringAsFixed(0)}', bold: true),
+                          _BillRow(
+                              label: 'Total',
+                              value: '\u20B9${_total.toStringAsFixed(0)}',
+                              bold: true),
                         ],
                       ),
                     );
                     if (!mounted) return;
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Booking sent to $_address. Owner will confirm soon!')),
+                      SnackBar(
+                          content: Text(
+                              'Booking sent to $_address. Owner will confirm soon!')),
                     );
                     Navigator.of(context).pop();
                   },

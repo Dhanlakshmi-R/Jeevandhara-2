@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import '../models/crop.dart';
-import '../theme/colors.dart';
-import '../theme/locale.dart';
-import '../widgets/ui/cards.dart';
-import '../widgets/ui/states.dart';
+import 'package:jeevandhara2/models/crop.dart';
+import 'package:jeevandhara2/theme/colors.dart';
+import 'package:jeevandhara2/theme/locale.dart';
+import 'package:jeevandhara2/widgets/ui/cards.dart';
+import 'package:jeevandhara2/widgets/ui/states.dart';
 import 'sell_crop_screen.dart';
 
 class MyCropsScreen extends StatefulWidget {
@@ -68,7 +68,8 @@ class _MyCropsScreenState extends State<MyCropsScreen> {
                 onPressed: _isLoading ? null : _openSell,
                 style: FilledButton.styleFrom(
                   padding: const EdgeInsets.symmetric(horizontal: 14),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
                 ),
                 icon: const Icon(Icons.add, size: 18),
                 label: const Text('Add Crop'),
@@ -86,7 +87,8 @@ class _MyCropsScreenState extends State<MyCropsScreen> {
                   ? EmptyState(
                       icon: Icons.eco_outlined,
                       title: 'No crops listed yet',
-                      subtitle: 'List your first crop and start receiving offers from traders.',
+                      subtitle:
+                          'List your first crop and start receiving offers from traders.',
                       actionLabel: 'List a crop',
                       onAction: _openSell,
                     )
@@ -94,7 +96,8 @@ class _MyCropsScreenState extends State<MyCropsScreen> {
                       padding: const EdgeInsets.all(16),
                       itemCount: _crops.length,
                       separatorBuilder: (_, __) => const SizedBox(height: 12),
-                      itemBuilder: (context, index) => _CropCard(crop: _crops[index]),
+                      itemBuilder: (context, index) =>
+                          _CropCard(crop: _crops[index]),
                     ),
         ),
       ],
@@ -129,7 +132,9 @@ class _CropCard extends StatelessWidget {
                   color: c.primaryLight,
                   borderRadius: BorderRadius.circular(14),
                 ),
-                child: Center(child: Text(crop.emoji, style: const TextStyle(fontSize: 26))),
+                child: Center(
+                    child:
+                        Text(crop.emoji, style: const TextStyle(fontSize: 26))),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -167,7 +172,8 @@ class _CropCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Expected price', style: TextStyle(fontSize: 11, color: c.textSecondary)),
+                    Text('Expected price',
+                        style: TextStyle(fontSize: 11, color: c.textSecondary)),
                     Text(
                       crop.expectedPrice,
                       style: TextStyle(
@@ -183,7 +189,8 @@ class _CropCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Listed', style: TextStyle(fontSize: 11, color: c.textSecondary)),
+                    Text('Listed',
+                        style: TextStyle(fontSize: 11, color: c.textSecondary)),
                     Text(
                       crop.listedAgo,
                       style: TextStyle(
@@ -201,7 +208,8 @@ class _CropCard extends StatelessWidget {
                   color: c.surfaceAlt,
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: Icon(Icons.arrow_forward, size: 15, color: c.textSecondary),
+                child:
+                    Icon(Icons.arrow_forward, size: 15, color: c.textSecondary),
               ),
             ],
           ),

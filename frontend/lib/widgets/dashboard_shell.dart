@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import '../models/app_notification.dart';
-import '../models/user.dart';
-import '../theme/app_theme.dart';
-import '../theme/colors.dart';
-import '../theme/locale.dart';
+import 'package:jeevandhara2/models/app_notification.dart';
+import 'package:jeevandhara2/models/user.dart';
+import 'package:jeevandhara2/theme/app_theme.dart';
+import 'package:jeevandhara2/theme/colors.dart';
+import 'package:jeevandhara2/theme/locale.dart';
 import 'layout.dart';
 import 'ui/buttons.dart';
 import 'ui/cards.dart';
@@ -68,8 +68,7 @@ class _DashboardShellState extends State<DashboardShell> {
     return 0;
   }
 
-  int get _unread =>
-      AppNotification.sampleData().where((n) => !n.seen).length;
+  int get _unread => AppNotification.sampleData().where((n) => !n.seen).length;
 
   void _select(int index) => setState(() => _index = index);
 
@@ -279,7 +278,8 @@ class _Sidebar extends StatelessWidget {
           if (user != null)
             Container(
               padding: EdgeInsets.all(collapsed ? 10 : 14),
-              margin: EdgeInsets.fromLTRB(collapsed ? 8 : 12, 4, collapsed ? 8 : 12, collapsed ? 8 : 12),
+              margin: EdgeInsets.fromLTRB(collapsed ? 8 : 12, 4,
+                  collapsed ? 8 : 12, collapsed ? 8 : 12),
               decoration: BoxDecoration(
                 color: c.surfaceAlt,
                 borderRadius: BorderRadius.circular(14),
@@ -324,7 +324,8 @@ class _Sidebar extends StatelessWidget {
                 icon: AnimatedRotation(
                   turns: collapsed ? 0.25 : 0,
                   duration: const Duration(milliseconds: 200),
-                  child: Icon(collapsed ? Icons.menu_open : Icons.menu, color: c.textSecondary),
+                  child: Icon(collapsed ? Icons.menu_open : Icons.menu,
+                      color: c.textSecondary),
                 ),
               ),
             ),
@@ -401,38 +402,39 @@ class _NavItem extends StatelessWidget {
               horizontal: collapsed ? 0 : 12,
               vertical: 11,
             ),
-          child: Row(
-            children: [
-              Container(
-                width: 38,
-                height: 38,
-                decoration: BoxDecoration(
-                  color: selected ? c.primary : c.surfaceAlt,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                alignment: Alignment.center,
-                child: Icon(
-                  selected ? item.selectedIcon : item.icon,
-                  size: 19,
-                  color: selected ? Colors.white : c.textSecondary,
-                ),
-              ),
-              if (!collapsed) ...[
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    context.str(item.labelKey),
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                      color: selected ? c.primaryDark : c.textPrimary,
-                    ),
+            child: Row(
+              children: [
+                Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    color: selected ? c.primary : c.surfaceAlt,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  alignment: Alignment.center,
+                  child: Icon(
+                    selected ? item.selectedIcon : item.icon,
+                    size: 19,
+                    color: selected ? Colors.white : c.textSecondary,
                   ),
                 ),
-if (selected)
-                  Icon(Icons.chevron_right, size: 15, color: c.primary),
+                if (!collapsed) ...[
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      context.str(item.labelKey),
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight:
+                            selected ? FontWeight.w700 : FontWeight.w500,
+                        color: selected ? c.primaryDark : c.textPrimary,
+                      ),
+                    ),
+                  ),
+                  if (selected)
+                    Icon(Icons.chevron_right, size: 15, color: c.primary),
+                ],
               ],
-            ],
             ),
           ),
         ),
@@ -507,11 +509,11 @@ class _TopBar extends StatelessWidget {
           ),
           const Spacer(),
           if (showLocation)
-          _LocationPill(
-            label: location,
-            regions: const ['Dharwad', 'Hubballi', 'Belagavi', 'Gadag'],
-            onSelected: onSelectLocation,
-          ),
+            _LocationPill(
+              label: location,
+              regions: const ['Dharwad', 'Hubballi', 'Belagavi', 'Gadag'],
+              onSelected: onSelectLocation,
+            ),
           const SizedBox(width: 12),
           const ThemeToggle(),
           const SizedBox(width: 8),
@@ -542,8 +544,18 @@ class _TopBar extends StatelessWidget {
     final now = DateTime.now();
     const weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
     const months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec'
     ];
     return '${weekdays[now.weekday - 1]}, ${now.day} ${months[now.month - 1]} ${now.year}';
   }
@@ -621,7 +633,10 @@ class _BellButton extends StatelessWidget {
     return Stack(
       clipBehavior: Clip.none,
       children: [
-        AppIconButton(icon: Icons.notifications_none, onPressed: onTap, tooltip: 'Notifications'),
+        AppIconButton(
+            icon: Icons.notifications_none,
+            onPressed: onTap,
+            tooltip: 'Notifications'),
         if (unread > 0)
           Positioned(
             right: 2,

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import '../models/market_price.dart';
-import '../theme/colors.dart';
-import '../widgets/ui/cards.dart';
-import '../widgets/ui/states.dart';
+import 'package:jeevandhara2/models/market_price.dart';
+import 'package:jeevandhara2/theme/colors.dart';
+import 'package:jeevandhara2/widgets/ui/cards.dart';
+import 'package:jeevandhara2/widgets/ui/states.dart';
 
 class MarketPricesScreen extends StatefulWidget {
   const MarketPricesScreen({super.key});
@@ -17,7 +17,12 @@ class _MarketPricesScreenState extends State<MarketPricesScreen> {
   String _market = 'Hubballi APMC';
   String? _filter;
 
-  static const _markets = ['Hubballi APMC', 'Dharwad Market', 'Belagavi APMC', 'Gadag Market'];
+  static const _markets = [
+    'Hubballi APMC',
+    'Dharwad Market',
+    'Belagavi APMC',
+    'Gadag Market'
+  ];
 
   List<MarketPrice> get _filtered {
     final q = _search.text.trim().toLowerCase();
@@ -68,7 +73,8 @@ class _MarketPricesScreenState extends State<MarketPricesScreen> {
                       tooltip: 'Filter',
                       onSelected: (v) => setState(() => _filter = v),
                       itemBuilder: (context) => [
-                        const PopupMenuItem(value: 'All trends', child: Text('All trends')),
+                        const PopupMenuItem(
+                            value: 'All trends', child: Text('All trends')),
                         for (final t in ['Rising', 'Stable', 'Falling'])
                           PopupMenuItem(value: t, child: Text(t)),
                       ],
@@ -80,7 +86,8 @@ class _MarketPricesScreenState extends State<MarketPricesScreen> {
                 height: 48,
                 child: ListView(
                   scrollDirection: Axis.horizontal,
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   children: [
                     for (final m in _markets) ...[
                       _MarketChip(
@@ -121,7 +128,8 @@ class _MarketChip extends StatelessWidget {
   final bool selected;
   final VoidCallback onTap;
 
-  const _MarketChip({required this.label, required this.selected, required this.onTap});
+  const _MarketChip(
+      {required this.label, required this.selected, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -197,7 +205,9 @@ class _PriceDetailCard extends StatelessWidget {
                   color: c.primaryLight,
                   borderRadius: BorderRadius.circular(14),
                 ),
-                child: Center(child: Text(price.emoji, style: const TextStyle(fontSize: 24))),
+                child: Center(
+                    child: Text(price.emoji,
+                        style: const TextStyle(fontSize: 24))),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -232,9 +242,12 @@ class _PriceDetailCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 4),
                   StatusBadge(
-                    text: '${price.trendLabel} ${price.changePercent >= 0 ? '+' : ''}${price.changePercent.toStringAsFixed(1)}%',
+                    text:
+                        '${price.trendLabel} ${price.changePercent >= 0 ? '+' : ''}${price.changePercent.toStringAsFixed(1)}%',
                     color: trendColor,
-                    icon: price.isRising ? Icons.arrow_upward : Icons.arrow_downward,
+                    icon: price.isRising
+                        ? Icons.arrow_upward
+                        : Icons.arrow_downward,
                   ),
                 ],
               ),
@@ -247,7 +260,10 @@ class _PriceDetailCard extends StatelessWidget {
             children: [
               Text(
                 '7-day trend',
-                style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: c.textSecondary),
+                style: TextStyle(
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w600,
+                    color: c.textSecondary),
               ),
               const SizedBox(width: 8),
               for (final v in trend)

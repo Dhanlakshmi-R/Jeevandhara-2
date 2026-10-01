@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import '../models/trader.dart';
-import '../theme/colors.dart';
-import '../widgets/ui/buttons.dart';
-import '../widgets/ui/cards.dart';
-import '../widgets/ui/states.dart';
+import 'package:jeevandhara2/models/trader.dart';
+import 'package:jeevandhara2/theme/colors.dart';
+import 'package:jeevandhara2/widgets/ui/buttons.dart';
+import 'package:jeevandhara2/widgets/ui/cards.dart';
+import 'package:jeevandhara2/widgets/ui/states.dart';
 
 class FindTradersScreen extends StatefulWidget {
   const FindTradersScreen({super.key});
@@ -62,7 +62,10 @@ class _FindTradersScreenState extends State<FindTradersScreen> {
             children: [
               Text(
                 'Contact traders',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: c.textPrimary),
+                style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: c.textPrimary),
               ),
               const SizedBox(height: 12),
               for (final t in traders)
@@ -89,7 +92,8 @@ class _FindTradersScreenState extends State<FindTradersScreen> {
                             ),
                             Text(
                               t.phone,
-                              style: TextStyle(fontSize: 12.5, color: c.textSecondary),
+                              style: TextStyle(
+                                  fontSize: 12.5, color: c.textSecondary),
                             ),
                           ],
                         ),
@@ -137,13 +141,16 @@ class _FindTradersScreenState extends State<FindTradersScreen> {
                 .map((crop) => Padding(
                       padding: const EdgeInsets.only(right: 8),
                       child: ChoiceChip(
-                        label: Text(crop, style: const TextStyle(fontSize: 12.5)),
+                        label:
+                            Text(crop, style: const TextStyle(fontSize: 12.5)),
                         selected: _filter == crop,
                         onSelected: (_) => setState(() => _filter = crop),
                         selectedColor: c.primaryLight,
-                        side: BorderSide(color: _filter == crop ? c.primary : c.border),
+                        side: BorderSide(
+                            color: _filter == crop ? c.primary : c.border),
                         labelStyle: TextStyle(
-                          color: _filter == crop ? c.primaryDark : c.textSecondary,
+                          color:
+                              _filter == crop ? c.primaryDark : c.textSecondary,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -228,7 +235,8 @@ class _TraderCard extends StatelessWidget {
                             ),
                           ),
                         ),
-                        const Icon(Icons.star, size: 16, color: Color(0xFFF59E0B)),
+                        const Icon(Icons.star,
+                            size: 16, color: Color(0xFFF59E0B)),
                         const SizedBox(width: 3),
                         Text(
                           trader.rating.toStringAsFixed(1),
@@ -251,11 +259,13 @@ class _TraderCard extends StatelessWidget {
                     const SizedBox(height: 3),
                     Row(
                       children: [
-                        Icon(Icons.place_outlined, size: 13, color: c.textSecondary),
+                        Icon(Icons.place_outlined,
+                            size: 13, color: c.textSecondary),
                         const SizedBox(width: 3),
                         Text(
                           '${trader.location} \u2022 ${trader.distance} away',
-                          style: TextStyle(fontSize: 12, color: c.textSecondary),
+                          style:
+                              TextStyle(fontSize: 12, color: c.textSecondary),
                         ),
                       ],
                     ),
@@ -288,7 +298,9 @@ class _TraderCard extends StatelessWidget {
               Expanded(
                 child: AppTonalButton(
                   label: trader.available ? 'Call now' : 'Currently busy',
-                  icon: trader.available ? Icons.call_outlined : Icons.hourglass_empty,
+                  icon: trader.available
+                      ? Icons.call_outlined
+                      : Icons.hourglass_empty,
                   onPressed: onCall,
                 ),
               ),

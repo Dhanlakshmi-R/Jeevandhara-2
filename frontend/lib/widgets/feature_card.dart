@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../theme/colors.dart';
+import 'package:jeevandhara2/theme/colors.dart';
 
 class FeatureCard extends StatelessWidget {
   final String title;

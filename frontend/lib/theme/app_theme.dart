@@ -125,7 +125,8 @@ ThemeData _buildTheme(ThemeColors c) {
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
       fillColor: c.inputFill,
-      hintStyle: TextStyle(color: c.textSecondary.withValues(alpha: 0.85), fontSize: 14),
+      hintStyle: TextStyle(
+          color: c.textSecondary.withValues(alpha: 0.85), fontSize: 14),
       labelStyle: TextStyle(color: c.textSecondary, fontSize: 14.5),
       floatingLabelStyle: TextStyle(
         color: c.isDark ? c.primary : AppColors.primaryDark,
@@ -189,11 +190,16 @@ ThemeData _buildTheme(ThemeColors c) {
       height: 68,
       elevation: 0,
       labelTextStyle: WidgetStatePropertyAll(
-        TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: c.textSecondary),
+        TextStyle(
+            fontSize: 11.5,
+            fontWeight: FontWeight.w600,
+            color: c.textSecondary),
       ),
       iconTheme: WidgetStateProperty.resolveWith((states) {
         return IconThemeData(
-          color: states.contains(WidgetState.selected) ? c.primary : c.textSecondary,
+          color: states.contains(WidgetState.selected)
+              ? c.primary
+              : c.textSecondary,
           size: 24,
         );
       }),
@@ -202,8 +208,10 @@ ThemeData _buildTheme(ThemeColors c) {
       backgroundColor: c.surfaceElevated,
       surfaceTintColor: Colors.transparent,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      titleTextStyle: TextStyle(color: c.textPrimary, fontSize: 18, fontWeight: FontWeight.w700),
-      contentTextStyle: TextStyle(color: c.textPrimary, fontSize: 14.5, height: 1.5),
+      titleTextStyle: TextStyle(
+          color: c.textPrimary, fontSize: 18, fontWeight: FontWeight.w700),
+      contentTextStyle:
+          TextStyle(color: c.textPrimary, fontSize: 14.5, height: 1.5),
     ),
     bottomSheetTheme: const BottomSheetThemeData(
       backgroundColor: Colors.transparent,
@@ -218,14 +226,16 @@ ThemeData _buildTheme(ThemeColors c) {
     ),
     snackBarTheme: SnackBarThemeData(
       backgroundColor: c.isDark ? c.surfaceElevated : c.textPrimary,
-      contentTextStyle: TextStyle(color: c.isDark ? c.textPrimary : Colors.white, fontSize: 14),
+      contentTextStyle: TextStyle(
+          color: c.isDark ? c.textPrimary : Colors.white, fontSize: 14),
       behavior: SnackBarBehavior.floating,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
     ),
     listTileTheme: ListTileThemeData(
       iconColor: c.textSecondary,
       textColor: c.textPrimary,
-      titleTextStyle: TextStyle(color: c.textPrimary, fontSize: 15, fontWeight: FontWeight.w600),
+      titleTextStyle: TextStyle(
+          color: c.textPrimary, fontSize: 15, fontWeight: FontWeight.w600),
       subtitleTextStyle: TextStyle(color: c.textSecondary, fontSize: 13),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       tileColor: c.surface,
@@ -235,7 +245,8 @@ ThemeData _buildTheme(ThemeColors c) {
         color: c.isDark ? Colors.white : AppColors.textPrimary,
         borderRadius: BorderRadius.circular(8),
       ),
-      textStyle: TextStyle(color: c.isDark ? Colors.black : Colors.white, fontSize: 12),
+      textStyle: TextStyle(
+          color: c.isDark ? Colors.black : Colors.white, fontSize: 12),
       waitDuration: const Duration(milliseconds: 500),
     ),
     chipTheme: ChipThemeData(
@@ -265,7 +276,8 @@ ThemeData _buildTheme(ThemeColors c) {
         return c.textSecondary;
       }),
       trackColor: WidgetStateProperty.resolveWith((states) {
-        if (states.contains(WidgetState.selected)) return c.primary.withValues(alpha: 0.4);
+        if (states.contains(WidgetState.selected))
+          return c.primary.withValues(alpha: 0.4);
         return c.border;
       }),
     ),

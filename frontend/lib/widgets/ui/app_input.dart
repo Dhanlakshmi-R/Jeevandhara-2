@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../theme/colors.dart';
+import 'package:jeevandhara2/theme/colors.dart';
 
 class AppTextField extends StatefulWidget {
   final TextEditingController controller;
@@ -11,6 +11,7 @@ class AppTextField extends StatefulWidget {
   final String? Function(String?)? validator;
   final TextInputAction textInputAction;
   final int maxLines;
+  final bool enabled;
 
   const AppTextField({
     super.key,
@@ -23,6 +24,7 @@ class AppTextField extends StatefulWidget {
     this.validator,
     this.textInputAction = TextInputAction.next,
     this.maxLines = 1,
+    this.enabled = true,
   });
 
   @override
@@ -37,6 +39,7 @@ class _AppTextFieldState extends State<AppTextField> {
     final c = context.colors;
     return TextFormField(
       controller: widget.controller,
+      enabled: widget.enabled,
       obscureText: _obscured,
       keyboardType: widget.keyboardType,
       validator: widget.validator,
@@ -52,7 +55,9 @@ class _AppTextFieldState extends State<AppTextField> {
             ? IconButton(
                 onPressed: () => setState(() => _obscured = !_obscured),
                 icon: Icon(
-                  _obscured ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                  _obscured
+                      ? Icons.visibility_off_outlined
+                      : Icons.visibility_outlined,
                 ),
               )
             : null,
@@ -67,7 +72,7 @@ class AppDropdownField extends StatelessWidget {
   final String? value;
   final String? hint;
   final List<String> items;
-  final ValueChanged<String?> onChanged;
+  final ValueChanged<String?>? onChanged;
   final String? Function(String?)? validator;
 
   const AppDropdownField({
@@ -76,7 +81,7 @@ class AppDropdownField extends StatelessWidget {
     required this.icon,
     required this.value,
     required this.items,
-    required this.onChanged,
+    this.onChanged,
     this.hint,
     this.validator,
   });

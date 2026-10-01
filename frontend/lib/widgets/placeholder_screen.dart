@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../theme/colors.dart';
+import 'package:jeevandhara2/theme/colors.dart';
 
 class PlaceholderScreen extends StatelessWidget {
   final String title;
@@ -24,12 +24,16 @@ class PlaceholderScreen extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(icon, size: 76, color: AppColors.primary.withValues(alpha: 0.35)),
+              Icon(icon,
+                  size: 76, color: AppColors.primary.withValues(alpha: 0.35)),
               const SizedBox(height: 20),
               Text(
                 '$title \u2014 coming soon',
                 textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.textDark),
+                style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.textDark),
               ),
               const SizedBox(height: 10),
               Text(

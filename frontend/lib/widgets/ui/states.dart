@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../theme/colors.dart';
+import 'package:jeevandhara2/theme/colors.dart';
 import 'buttons.dart';
 
 class SkeletonBox extends StatelessWidget {
@@ -12,7 +12,9 @@ class SkeletonBox extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final base = c.isDark ? Colors.white.withValues(alpha: 0.06) : const Color(0xFFE4EADF);
+    final base = c.isDark
+        ? Colors.white.withValues(alpha: 0.06)
+        : const Color(0xFFE4EADF);
     return Container(
       width: width,
       height: height,
@@ -87,7 +89,8 @@ class LoadingGrid extends StatelessWidget {
             decoration: BoxDecoration(
               color: context.colors.surface,
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: context.colors.border.withValues(alpha: 0.5)),
+              border: Border.all(
+                  color: context.colors.border.withValues(alpha: 0.5)),
             ),
             padding: const EdgeInsets.all(16),
             child: const Row(

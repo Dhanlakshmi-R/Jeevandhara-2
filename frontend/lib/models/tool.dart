@@ -28,7 +28,8 @@ class Tool {
           location: 'Dharwad',
           ownerRating: 4.7,
           available: true,
-          description: '75 HP tractor with trolley. Ideal for ploughing and hauling.',
+          description:
+              '75 HP tractor with trolley. Ideal for ploughing and hauling.',
         ),
         Tool(
           name: 'Power Tiller',

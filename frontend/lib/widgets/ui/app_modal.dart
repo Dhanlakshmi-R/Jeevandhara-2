@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../theme/colors.dart';
+import 'package:jeevandhara2/theme/colors.dart';
 
 /// Displays a themed bottom sheet modal (mobile-first). Returns the result.
 Future<T?> showAppModal<T>({
@@ -21,7 +21,8 @@ Future<T?> showAppModal<T>({
           color: c.surfaceElevated,
           borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
         ),
-        padding: EdgeInsets.only(left: 20, right: 20, top: 12, bottom: 20 + bottom),
+        padding:
+            EdgeInsets.only(left: 20, right: 20, top: 12, bottom: 20 + bottom),
         child: SafeArea(
           top: false,
           child: SingleChildScrollView(

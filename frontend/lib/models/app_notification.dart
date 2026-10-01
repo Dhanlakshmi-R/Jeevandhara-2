@@ -19,7 +19,8 @@ class AppNotification {
         AppNotification(
           type: NotificationType.weather,
           title: 'Heavy rain alert',
-          message: 'Expect 40mm rainfall in Dharwad in the next 24 hours. Delay any spraying.',
+          message:
+              'Expect 40mm rainfall in Dharwad in the next 24 hours. Delay any spraying.',
           time: '2 hours ago',
           seen: false,
         ),
@@ -33,14 +34,16 @@ class AppNotification {
         AppNotification(
           type: NotificationType.offer,
           title: 'New offer received',
-          message: 'Patil Agro Traders offered \u20B930/kg for your 250 kg tomato lot.',
+          message:
+              'Patil Agro Traders offered \u20B930/kg for your 250 kg tomato lot.',
           time: 'Yesterday',
           seen: true,
         ),
         AppNotification(
           type: NotificationType.tool,
           title: 'Tractor rental confirmed',
-          message: 'Your Mahindra tractor booking for 22 Sep has been confirmed.',
+          message:
+              'Your Mahindra tractor booking for 22 Sep has been confirmed.',
           time: '2 days ago',
           seen: true,
         ),

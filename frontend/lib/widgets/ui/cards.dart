@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../theme/colors.dart';
+import 'package:jeevandhara2/theme/colors.dart';
 
 /// Themed card surface with optional tap, tonal variant and shadow.
 class AppCard extends StatelessWidget {
@@ -29,7 +29,8 @@ class AppCard extends StatelessWidget {
         color: bg,
         borderRadius: r,
         border: Border.all(
-          color: bg == c.surfaceAlt ? c.border.withValues(alpha: 0.4) : c.border,
+          color:
+              bg == c.surfaceAlt ? c.border.withValues(alpha: 0.4) : c.border,
         ),
         boxShadow: [
           BoxShadow(
@@ -61,7 +62,10 @@ class AppCardFlat extends StatelessWidget {
   final Widget child;
   final EdgeInsetsGeometry padding;
 
-  const AppCardFlat({super.key, required this.child, this.padding = const EdgeInsets.all(14)});
+  const AppCardFlat(
+      {super.key,
+      required this.child,
+      this.padding = const EdgeInsets.all(14)});
 
   @override
   Widget build(BuildContext context) {
@@ -108,7 +112,8 @@ class StatusBadge extends StatelessWidget {
           ],
           Text(
             text,
-            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: color),
+            style: TextStyle(
+                fontSize: 12, fontWeight: FontWeight.w700, color: color),
           ),
         ],
       ),

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import '../theme/app_theme.dart';
-import '../theme/colors.dart';
+import 'package:jeevandhara2/theme/app_theme.dart';
+import 'package:jeevandhara2/theme/colors.dart';
 
 /// Premium sun/moon theme toggle with smooth 250ms transitions.
 class ThemeToggle extends StatelessWidget {
@@ -30,7 +30,8 @@ class ThemeToggle extends StatelessWidget {
             shape: const CircleBorder(),
             clipBehavior: Clip.antiAlias,
             child: InkWell(
-              onTap: () => controller.setMode(isDark ? ThemeMode.light : ThemeMode.dark),
+              onTap: () =>
+                  controller.setMode(isDark ? ThemeMode.light : ThemeMode.dark),
               child: AnimatedContainer(
                 duration: ThemeController.animDuration,
                 curve: Curves.easeInOut,

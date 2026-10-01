@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import '../models/crop.dart';
-import '../theme/colors.dart';
-import '../widgets/layout.dart';
-import '../widgets/ui/app_input.dart';
-import '../widgets/ui/buttons.dart';
-import '../widgets/ui/cards.dart';
+import 'package:jeevandhara2/models/crop.dart';
+import 'package:jeevandhara2/theme/colors.dart';
+import 'package:jeevandhara2/widgets/layout.dart';
+import 'package:jeevandhara2/widgets/ui/app_input.dart';
+import 'package:jeevandhara2/widgets/ui/buttons.dart';
+import 'package:jeevandhara2/widgets/ui/cards.dart';
 
 class SellCropScreen extends StatefulWidget {
   final ValueChanged<CropListing>? onPosted;
@@ -23,9 +23,24 @@ class _SellCropScreenState extends State<SellCropScreen> {
   final _locationController = TextEditingController();
   final _descriptionController = TextEditingController();
 
-  static const _crops = ['Tomato', 'Wheat', 'Onion', 'Cotton', 'Groundnut', 'Potato', 'Maize', 'Chilli'];
+  static const _crops = [
+    'Tomato',
+    'Wheat',
+    'Onion',
+    'Cotton',
+    'Groundnut',
+    'Potato',
+    'Maize',
+    'Chilli'
+  ];
   static const _units = ['kg', 'quintal', 'ton'];
-  static const _harvestDates = ['Available now', 'In 7 days', 'In 2 weeks', 'In 1 month', 'In 2 months'];
+  static const _harvestDates = [
+    'Available now',
+    'In 7 days',
+    'In 2 weeks',
+    'In 1 month',
+    'In 2 months'
+  ];
 
   final List<int> _media = [1, 2, 3];
   String? _crop;
@@ -70,7 +85,20 @@ class _SellCropScreenState extends State<SellCropScreen> {
   }
 
   String _monthName(int m) {
-    const names = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const names = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec'
+    ];
     return names[m - 1];
   }
 
@@ -87,18 +115,22 @@ class _SellCropScreenState extends State<SellCropScreen> {
       emoji: _emojiFor[_crop] ?? '\uD83C\uDF3F',
       quantity: '${_quantityController.text.trim()} $_unit',
       expectedPrice: '\u20B9${_priceController.text.trim()}/$_unit',
-      location: _locationController.text.trim().isEmpty ? 'Dharwad' : _locationController.text.trim(),
+      location: _locationController.text.trim().isEmpty
+          ? 'Dharwad'
+          : _locationController.text.trim(),
       listedAgo: 'Just now',
       status: 'Active',
     );
     widget.onPosted?.call(listing);
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Crop posted! Traders can now see your listing.')),
+      const SnackBar(
+          content: Text('Crop posted! Traders can now see your listing.')),
     );
     Navigator.of(context).pop();
   }
 
-  String? _required(String? v) => (v == null || v.trim().isEmpty) ? 'Required' : null;
+  String? _required(String? v) =>
+      (v == null || v.trim().isEmpty) ? 'Required' : null;
 
   @override
   Widget build(BuildContext context) {
@@ -106,7 +138,9 @@ class _SellCropScreenState extends State<SellCropScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Sell My Crop'),
-        actions: const [Padding(padding: EdgeInsets.only(right: 12), child: ThemeToggle())],
+        actions: const [
+          Padding(padding: EdgeInsets.only(right: 12), child: ThemeToggle())
+        ],
       ),
       body: Form(
         key: _formKey,
@@ -136,7 +170,8 @@ class _SellCropScreenState extends State<SellCropScreen> {
                         },
                         selectedColor: c.primaryLight,
                         avatar: Text(_emojiFor[crop] ?? '\uD83C\uDF3F'),
-                        side: BorderSide(color: _crop == crop ? c.primary : c.border),
+                        side: BorderSide(
+                            color: _crop == crop ? c.primary : c.border),
                         labelStyle: TextStyle(
                           color: _crop == crop ? c.primaryDark : c.textPrimary,
                           fontWeight: FontWeight.w600,
@@ -190,7 +225,8 @@ class _SellCropScreenState extends State<SellCropScreen> {
               onTap: _pickHarvestDate,
               borderRadius: BorderRadius.circular(14),
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
                 decoration: BoxDecoration(
                   color: c.surface,
                   borderRadius: BorderRadius.circular(14),
@@ -229,7 +265,8 @@ class _SellCropScreenState extends State<SellCropScreen> {
                         onPressed: () => setState(() => _harvest = h),
                         backgroundColor: c.surface,
                         side: BorderSide(color: c.border),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16)),
                       ))
                   .toList(),
             ),
@@ -243,7 +280,10 @@ class _SellCropScreenState extends State<SellCropScreen> {
             const SizedBox(height: 20),
             Text(
               'Add photos & videos',
-              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: c.textPrimary),
+              style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  color: c.textPrimary),
             ),
             const SizedBox(height: 10),
             SizedBox(
@@ -286,11 +326,14 @@ class _SellCropScreenState extends State<SellCropScreen> {
                                 children: [
                                   Container(
                                     decoration: BoxDecoration(
-                                      color: c.primaryLight.withValues(alpha: 0.6),
+                                      color:
+                                          c.primaryLight.withValues(alpha: 0.6),
                                       borderRadius: BorderRadius.circular(12),
                                     ),
                                     child: Icon(
-                                      id == 1 ? Icons.image_outlined : Icons.videocam_outlined,
+                                      id == 1
+                                          ? Icons.image_outlined
+                                          : Icons.videocam_outlined,
                                       color: c.primary,
                                       size: 24,
                                     ),
@@ -299,11 +342,15 @@ class _SellCropScreenState extends State<SellCropScreen> {
                                     top: 4,
                                     right: 4,
                                     child: InkWell(
-                                      onTap: () => setState(() => _media.remove(id)),
+                                      onTap: () =>
+                                          setState(() => _media.remove(id)),
                                       child: Container(
                                         padding: const EdgeInsets.all(2),
-                                        decoration: BoxDecoration(color: c.danger, shape: BoxShape.circle),
-                                        child: const Icon(Icons.close, size: 12, color: Colors.white),
+                                        decoration: BoxDecoration(
+                                            color: c.danger,
+                                            shape: BoxShape.circle),
+                                        child: const Icon(Icons.close,
+                                            size: 12, color: Colors.white),
                                       ),
                                     ),
                                   ),
@@ -317,7 +364,10 @@ class _SellCropScreenState extends State<SellCropScreen> {
             const SizedBox(height: 20),
             Text(
               'Listing preview',
-              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: c.textPrimary),
+              style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  color: c.textPrimary),
             ),
             const SizedBox(height: 10),
             AppCard(
@@ -331,7 +381,8 @@ class _SellCropScreenState extends State<SellCropScreen> {
                       borderRadius: BorderRadius.circular(14),
                     ),
                     child: Center(
-                      child: Text(_emojiFor[_crop] ?? '\uD83C\uDF3F', style: const TextStyle(fontSize: 26)),
+                      child: Text(_emojiFor[_crop] ?? '\uD83C\uDF3F',
+                          style: const TextStyle(fontSize: 26)),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -340,7 +391,10 @@ class _SellCropScreenState extends State<SellCropScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          _crop ?? (_cropController.text.isEmpty ? 'Your Crop' : _cropController.text.trim()),
+                          _crop ??
+                              (_cropController.text.isEmpty
+                                  ? 'Your Crop'
+                                  : _cropController.text.trim()),
                           style: TextStyle(
                             fontSize: 15,
                             fontWeight: FontWeight.w700,
@@ -349,13 +403,16 @@ class _SellCropScreenState extends State<SellCropScreen> {
                         ),
                         Text(
                           '${_quantityController.text.isEmpty ? '\u2014' : '${_quantityController.text.trim()} $_unit'} \u2022 $_harvest',
-                          style: TextStyle(fontSize: 12.5, color: c.textSecondary),
+                          style:
+                              TextStyle(fontSize: 12.5, color: c.textSecondary),
                         ),
                       ],
                     ),
                   ),
                   Text(
-                    _priceController.text.isEmpty ? '' : '\u20B9${_priceController.text.trim()}/$_unit',
+                    _priceController.text.isEmpty
+                        ? ''
+                        : '\u20B9${_priceController.text.trim()}/$_unit',
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w700,
@@ -366,7 +423,10 @@ class _SellCropScreenState extends State<SellCropScreen> {
               ),
             ),
             const SizedBox(height: 24),
-            AppPrimaryButton(label: 'Post Crop for Traders', icon: Icons.send, onPressed: _postCrop),
+            AppPrimaryButton(
+                label: 'Post Crop for Traders',
+                icon: Icons.send,
+                onPressed: _postCrop),
             const SizedBox(height: 24),
           ],
         ),
