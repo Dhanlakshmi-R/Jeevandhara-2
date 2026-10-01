@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../services/api_service.dart';
-import '../theme/colors.dart';
-import '../theme/locale.dart';
-import '../widgets/agri_scene.dart';
-import '../widgets/layout.dart';
+import 'package:jeevandhara2/services/api_service.dart';
+import 'package:jeevandhara2/theme/colors.dart';
+import 'package:jeevandhara2/theme/locale.dart';
+import 'package:jeevandhara2/widgets/agri_scene.dart';
+import 'package:jeevandhara2/widgets/layout.dart';
 import 'about_screen.dart';
 import 'home_screen.dart';
 import 'login_screen.dart';
@@ -27,7 +27,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       kind: AgriSceneKind.sunrise,
       color: AppColors.primary,
       title: 'Sell crops at fair prices',
-      subtitle: 'List your produce and connect directly with genuine traders. No middlemen, no unfair cuts.',
+      subtitle:
+          'List your produce and connect directly with genuine traders. No middlemen, no unfair cuts.',
       points: [
         'Reach verified traders near you',
         'Compare best-offered rates',
@@ -38,7 +39,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       kind: AgriSceneKind.weather,
       color: Color(0xFFF9A825),
       title: 'Weather + market, in your pocket',
-      subtitle: 'Daily weather alerts and live market prices help you decide the right time and place to sell.',
+      subtitle:
+          'Daily weather alerts and live market prices help you decide the right time and place to sell.',
       points: [
         'Hourly & 7-day weather forecasts',
         'Live APMC prices & trend insights',
@@ -49,7 +51,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       kind: AgriSceneKind.tools,
       color: AppColors.earth,
       title: 'Everything your farm needs',
-      subtitle: 'Rent equipment, buy quality inputs, and grow your farm with everything in one app.',
+      subtitle:
+          'Rent equipment, buy quality inputs, and grow your farm with everything in one app.',
       points: [
         'Rent tractors, harvesters & more',
         'Order seeds, fertilizers & pesticides',
@@ -74,7 +77,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       next = const HomeScreen();
     }
     if (!mounted) return;
-    Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => next));
+    Navigator.of(context)
+        .pushReplacement(MaterialPageRoute(builder: (_) => next));
   }
 
   void _openAbout() {
@@ -106,7 +110,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           Positioned(
             top: 60,
             left: -40,
-            child: Icon(Icons.eco, size: 90, color: slide.color.withValues(alpha: 0.06)),
+            child: Icon(Icons.eco,
+                size: 90, color: slide.color.withValues(alpha: 0.06)),
           ),
           SafeArea(
             child: Column(
@@ -126,7 +131,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                           ),
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        child: const Icon(Icons.eco_rounded, color: Colors.white, size: 22),
+                        child: const Icon(Icons.eco_rounded,
+                            color: Colors.white, size: 22),
                       ),
                       const SizedBox(width: 10),
                       Text(
@@ -166,7 +172,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                                       decoration: BoxDecoration(
                                         borderRadius: BorderRadius.circular(28),
                                         border: Border.all(
-                                          color: s.color.withValues(alpha: 0.28),
+                                          color:
+                                              s.color.withValues(alpha: 0.28),
                                           width: 1.5,
                                         ),
                                         boxShadow: [
@@ -178,7 +185,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                                         ],
                                       ),
                                       clipBehavior: Clip.antiAlias,
-                                      child: AgriScene(kind: s.kind, onDark: false),
+                                      child: AgriScene(
+                                          kind: s.kind, onDark: false),
                                     );
                                     if (constraints.maxWidth >= 560) {
                                       return Row(
@@ -241,9 +249,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                       style: FilledButton.styleFrom(
                         backgroundColor: c.primary,
                         foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16)),
                         elevation: 0,
-                        textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                        textStyle: const TextStyle(
+                            fontSize: 16, fontWeight: FontWeight.w700),
                       ),
                       child: Text(_page == _slides.length - 1
                           ? context.str(K.getStarted)
@@ -258,7 +268,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       TextButton(
-                        onPressed: _page == _slides.length - 1 ? _finish : _finish,
+                        onPressed:
+                            _page == _slides.length - 1 ? _finish : _finish,
                         style: TextButton.styleFrom(
                           foregroundColor: _page == _slides.length - 1
                               ? c.textSecondary.withValues(alpha: 0.4)
@@ -326,7 +337,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         const SizedBox(height: 10),
         Text(
           s.subtitle,
-          style: TextStyle(fontSize: 14.5, color: c.textSecondary, height: 1.55),
+          style:
+              TextStyle(fontSize: 14.5, color: c.textSecondary, height: 1.55),
         ),
         const SizedBox(height: 20),
         Container(

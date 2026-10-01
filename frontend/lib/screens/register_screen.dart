@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
-import '../services/api_service.dart';
-import '../theme/colors.dart';
-import '../widgets/agri_scene.dart';
-import '../widgets/auth_layout.dart';
-import '../widgets/ui/buttons.dart';
-import '../widgets/ui/app_input.dart';
+import 'package:jeevandhara2/services/api_service.dart';
+import 'package:jeevandhara2/theme/colors.dart';
+import 'package:jeevandhara2/widgets/agri_scene.dart';
+import 'package:jeevandhara2/widgets/auth_layout.dart';
+import 'package:jeevandhara2/widgets/ui/buttons.dart';
+import 'package:jeevandhara2/widgets/ui/app_input.dart';
 import 'about_screen.dart';
-import 'home_screen.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -25,11 +24,27 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _apiService = ApiService();
 
   static const _states = [
-    'Karnataka', 'Maharashtra', 'Tamil Nadu', 'Andhra Pradesh', 'Telangana', 'Gujarat', 'Punjab', 'Madhya Pradesh',
+    'Karnataka',
+    'Maharashtra',
+    'Tamil Nadu',
+    'Andhra Pradesh',
+    'Telangana',
+    'Gujarat',
+    'Punjab',
+    'Madhya Pradesh',
   ];
 
   static const _districts = [
-    'Belagavi', 'Ballari', 'Dharwad', 'Gadag', 'Haveri', 'Kolar', 'Mysuru', 'Raichur', 'Tumakuru', 'Udupi',
+    'Belagavi',
+    'Ballari',
+    'Dharwad',
+    'Gadag',
+    'Haveri',
+    'Kolar',
+    'Mysuru',
+    'Raichur',
+    'Tumakuru',
+    'Udupi',
   ];
 
   String _role = 'farmer';
@@ -84,43 +99,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
     }
   }
 
-  Future<void> _googleRegister() async {
-    showDialog<void>(
-      context: context,
-      barrierDismissible: false,
-      builder: (dialogContext) => Center(
-        child: Container(
-          padding: const EdgeInsets.all(24),
-          decoration: BoxDecoration(
-            color: context.colors.surfaceElevated,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: context.colors.divider),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const CircularProgressIndicator(color: Color(0xFF1F6B45)),
-              const SizedBox(height: 14),
-              Text('Creating Google account\u2026',
-                  style: TextStyle(color: dialogContext.colors.textPrimary)),
-            ],
-          ),
-        ),
-      ),
-    );
-    await Future.delayed(const Duration(milliseconds: 1400));
-    if (!mounted) return;
-    Navigator.of(context).pop();
-    await _apiService.saveUserRole('farmer');
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Signed up with Google (demo)')),
-    );
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (_) => const HomeScreen()),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return AuthShell(
@@ -138,11 +116,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text('I am a', style: TextStyle(fontWeight: FontWeight.w600, color: c.textPrimary, fontSize: 14.5)),
+          Text('I am a',
+              style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                  color: c.textPrimary,
+                  fontSize: 14.5)),
           const SizedBox(height: 10),
           Row(
             children: [
-              Expanded(child: _RoleCard(
+              Expanded(
+                  child: _RoleCard(
                 label: 'Farmer',
                 icon: Icons.agriculture_outlined,
                 emoji: '\uD83D\uDC33',
@@ -150,7 +133,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 onTap: () => setState(() => _role = 'farmer'),
               )),
               const SizedBox(width: 10),
-              Expanded(child: _RoleCard(
+              Expanded(
+                  child: _RoleCard(
                 label: 'Trader',
                 icon: Icons.storefront_outlined,
                 emoji: '\uD83E\uDDD1\u200D\uD83D\uDCBC',
@@ -158,7 +142,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 onTap: () => setState(() => _role = 'trader'),
               )),
               const SizedBox(width: 10),
-              Expanded(child: _RoleCard(
+              Expanded(
+                  child: _RoleCard(
                 label: 'Vendor',
                 icon: Icons.shopping_bag_outlined,
                 emoji: '\uD83D\uDED2',
@@ -172,7 +157,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
             controller: _nameController,
             label: 'Full name',
             icon: Icons.person_outline,
-            validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
+            validator: (v) =>
+                (v == null || v.trim().isEmpty) ? 'Required' : null,
             textInputAction: TextInputAction.next,
           ),
           const SizedBox(height: 14),
@@ -181,8 +167,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
             label: 'Mobile number',
             icon: Icons.phone_android,
             keyboardType: TextInputType.phone,
-            validator: (v) =>
-                (v == null || v.length < 10) ? 'Enter a valid 10-digit number' : null,
+            validator: (v) => (v == null || v.length < 10)
+                ? 'Enter a valid 10-digit number'
+                : null,
             textInputAction: TextInputAction.next,
           ),
           const SizedBox(height: 14),
@@ -191,7 +178,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
             label: 'Email',
             icon: Icons.mail_outline,
             keyboardType: TextInputType.emailAddress,
-            validator: (v) => (v == null || !v.contains('@')) ? 'Enter a valid email' : null,
+            validator: (v) =>
+                (v == null || !v.contains('@')) ? 'Enter a valid email' : null,
             textInputAction: TextInputAction.next,
           ),
           const SizedBox(height: 14),
@@ -200,7 +188,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
             label: 'Password',
             icon: Icons.lock_outline,
             isPassword: true,
-            validator: (v) => (v == null || v.length < 6) ? 'Minimum 6 characters' : null,
+            validator: (v) =>
+                (v == null || v.length < 6) ? 'Minimum 6 characters' : null,
             textInputAction: TextInputAction.next,
           ),
           const SizedBox(height: 14),
@@ -209,7 +198,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
             label: 'Confirm password',
             icon: Icons.lock_outline,
             isPassword: true,
-            validator: (v) => (v != _passwordController.text) ? 'Passwords do not match' : null,
+            validator: (v) => (v != _passwordController.text)
+                ? 'Passwords do not match'
+                : null,
             textInputAction: TextInputAction.done,
           ),
           const SizedBox(height: 14),
@@ -262,36 +253,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
             icon: Icons.person_add_alt_1,
             loading: _isLoading,
             onPressed: _handleRegister,
-          ),
-          const SizedBox(height: 18),
-          Row(
-            children: [
-              Expanded(child: Divider(color: c.divider)),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                child: Text(
-                  'or continue with',
-                  style: TextStyle(fontSize: 12, color: c.textSecondary),
-                ),
-              ),
-              Expanded(child: Divider(color: c.divider)),
-            ],
-          ),
-          const SizedBox(height: 14),
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton.icon(
-              onPressed: _googleRegister,
-              style: OutlinedButton.styleFrom(
-                foregroundColor: c.textPrimary,
-                side: BorderSide(color: c.border, width: 1.2),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                textStyle: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w600),
-              ),
-              icon: Icon(Icons.g_mobiledata, color: c.primary, size: 22),
-              label: const Text('Continue with Google'),
-            ),
           ),
           const SizedBox(height: 16),
           Row(
@@ -362,7 +323,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
           Expanded(
             child: Text(
               message,
-              style: TextStyle(color: c.danger, fontSize: 13, fontWeight: FontWeight.w600),
+              style: TextStyle(
+                  color: c.danger, fontSize: 13, fontWeight: FontWeight.w600),
             ),
           ),
         ],

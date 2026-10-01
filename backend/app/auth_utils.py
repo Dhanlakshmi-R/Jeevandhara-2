@@ -1,4 +1,5 @@
 import os
+import secrets
 from datetime import datetime, timedelta
 
 from fastapi import Depends, HTTPException, status
@@ -26,11 +27,36 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     return pwd_context.verify(plain_password, hashed_password)
 
 
+def unusable_password_hash() -> str:
+    """Hash of a random token so Google/OTP users can never log in with a password."""
+    return pwd_context.hash(secrets.token_urlsafe(32))
+
+
+def hash_otp(code: str) -> str:
+    """Hash an OTP before persisting it. Only the hash is ever stored."""
+    return pwd_context.hash(code)
+
+
+def verify_otp(code: str, code_hash: str) -> bool:
+    return pwd_context.verify(code, code_hash)
+
+
 def create_access_token(data: dict) -> str:
     to_encode = data.copy()
     expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+
+
+def issue_auth_result(user: models.User) -> dict:
+    """Build a consistent AuthResult dict (token + user) for every login path."""
+    access_token = create_access_token(data={"sub": str(user.id)})
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "profile_complete": user.profile_complete,
+        "user": user,
+    }
 
 
 def get_current_user(

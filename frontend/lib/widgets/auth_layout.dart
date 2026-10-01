@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../theme/colors.dart';
+import 'package:jeevandhara2/theme/colors.dart';
 import 'agri_scene.dart';
 import 'layout.dart';
 
@@ -38,7 +38,9 @@ class AuthShell extends StatelessWidget {
         body: Row(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Expanded(child: _SidePanel(scene: scene, title: panelTitle, subtitle: panelSubtitle)),
+            Expanded(
+                child: _SidePanel(
+                    scene: scene, title: panelTitle, subtitle: panelSubtitle)),
             Expanded(
               child: _FormPane(
                 headline: headline,
@@ -57,7 +59,8 @@ class AuthShell extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            _MobileHeader(scene: scene, title: panelTitle, subtitle: panelSubtitle),
+            _MobileHeader(
+                scene: scene, title: panelTitle, subtitle: panelSubtitle),
             Transform.translate(
               offset: const Offset(0, -20),
               child: Padding(
@@ -155,8 +158,12 @@ class _SidePanel extends StatelessWidget {
                     runSpacing: 10,
                     children: const [
                       _TrustPill(icon: Icons.shield_outlined, label: 'Secure'),
-                      _TrustPill(icon: Icons.verified_user_outlined, label: 'Verified'),
-                      _TrustPill(icon: Icons.language, label: 'EN \u00b7 \u0c95\u0ca8\u0ccd\u0ca8\u0ca1'),
+                      _TrustPill(
+                          icon: Icons.verified_user_outlined,
+                          label: 'Verified'),
+                      _TrustPill(
+                          icon: Icons.language,
+                          label: 'EN \u00b7 \u0c95\u0ca8\u0ccd\u0ca8\u0ca1'),
                     ],
                   ),
                 ],
@@ -194,7 +201,10 @@ class _BrandMark extends StatelessWidget {
         borderRadius: BorderRadius.circular(13),
         border: Border.all(color: Colors.white.withValues(alpha: 0.25)),
         boxShadow: [
-          BoxShadow(color: Colors.black.withValues(alpha: 0.12), blurRadius: 14, offset: const Offset(0, 6)),
+          BoxShadow(
+              color: Colors.black.withValues(alpha: 0.12),
+              blurRadius: 14,
+              offset: const Offset(0, 6)),
         ],
       ),
       alignment: Alignment.center,
@@ -264,7 +274,11 @@ class _MobileHeader extends StatelessWidget {
       child: Stack(
         clipBehavior: Clip.none,
         children: [
-          Positioned(right: -30, top: -30, child: Icon(Icons.eco, size: 110, color: Colors.white.withValues(alpha: 0.10))),
+          Positioned(
+              right: -30,
+              top: -30,
+              child: Icon(Icons.eco,
+                  size: 110, color: Colors.white.withValues(alpha: 0.10))),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -357,7 +371,8 @@ class _FormPane extends StatelessWidget {
                 const SizedBox(height: 6),
                 Text(
                   subhead,
-                  style: TextStyle(fontSize: 14.5, color: c.textSecondary, height: 1.5),
+                  style: TextStyle(
+                      fontSize: 14.5, color: c.textSecondary, height: 1.5),
                 ),
                 const SizedBox(height: 24),
                 _FormCard(child: child),
@@ -387,7 +402,9 @@ class _FormCard extends StatelessWidget {
         border: Border.all(color: c.divider),
         boxShadow: [
           BoxShadow(
-            color: c.isDark ? Colors.black.withValues(alpha: 0.4) : Colors.black.withValues(alpha: 0.09),
+            color: c.isDark
+                ? Colors.black.withValues(alpha: 0.4)
+                : Colors.black.withValues(alpha: 0.09),
             blurRadius: 30,
             offset: const Offset(0, 14),
           ),

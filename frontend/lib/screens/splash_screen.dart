@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import '../services/api_service.dart';
-import '../theme/colors.dart';
+import 'package:jeevandhara2/services/api_service.dart';
+import 'package:jeevandhara2/theme/colors.dart';
 import 'about_screen.dart';
 import 'home_screen.dart';
 import 'trader_dashboard_screen.dart';
@@ -83,16 +83,33 @@ class _SplashScreenState extends State<SplashScreen>
         child: Stack(
           children: [
             // Ambient decorative circles
-            Positioned(top: -60, right: -40, child: _GlowCircle(size: 260, opacity: 0.06)),
-            Positioned(bottom: -100, left: -80, child: _GlowCircle(size: 300, opacity: 0.05)),
-            Positioned(top: 100, left: -50, child: _GlowCircle(size: 180, opacity: 0.04)),
-            Positioned(bottom: 80, right: 40, child: _GlowCircle(size: 140, opacity: 0.05)),
+            Positioned(
+                top: -60,
+                right: -40,
+                child: _GlowCircle(size: 260, opacity: 0.06)),
+            Positioned(
+                bottom: -100,
+                left: -80,
+                child: _GlowCircle(size: 300, opacity: 0.05)),
+            Positioned(
+                top: 100,
+                left: -50,
+                child: _GlowCircle(size: 180, opacity: 0.04)),
+            Positioned(
+                bottom: 80,
+                right: 40,
+                child: _GlowCircle(size: 140, opacity: 0.05)),
 
             // Floating leaf icons
             Positioned(top: 20, right: 30, child: _leaf(Icons.eco, 60, 0.08)),
-            Positioned(left: 20, bottom: 120, child: _leaf(Icons.grass, 50, 0.07)),
-            Positioned(top: 180, left: 40, child: _leaf(Icons.wb_sunny, 30, 0.06)),
-            Positioned(bottom: 40, right: 60, child: _leaf(Icons.water_drop, 40, 0.06)),
+            Positioned(
+                left: 20, bottom: 120, child: _leaf(Icons.grass, 50, 0.07)),
+            Positioned(
+                top: 180, left: 40, child: _leaf(Icons.wb_sunny, 30, 0.06)),
+            Positioned(
+                bottom: 40,
+                right: 60,
+                child: _leaf(Icons.water_drop, 40, 0.06)),
 
             // Main content
             Center(
@@ -116,20 +133,26 @@ class _SplashScreenState extends State<SplashScreen>
                               offset: const Offset(0, 12),
                             ),
                           ],
-                          border: Border.all(color: Colors.white.withValues(alpha: 0.15), width: 1),
+                          border: Border.all(
+                              color: Colors.white.withValues(alpha: 0.15),
+                              width: 1),
                         ),
                         child: Transform.scale(
                           scale: 0.88,
                           child: Container(
                             decoration: BoxDecoration(
                               gradient: LinearGradient(
-                                colors: [Colors.white.withValues(alpha: 0.9), Colors.white.withValues(alpha: 0.6)],
+                                colors: [
+                                  Colors.white.withValues(alpha: 0.9),
+                                  Colors.white.withValues(alpha: 0.6)
+                                ],
                                 begin: Alignment.topCenter,
                                 end: Alignment.bottomCenter,
                               ),
                               borderRadius: BorderRadius.circular(24),
                             ),
-                            child: const Icon(Icons.eco_rounded, size: 64, color: Color(0xFF1F6B45)),
+                            child: const Icon(Icons.eco_rounded,
+                                size: 64, color: Color(0xFF1F6B45)),
                           ),
                         ),
                       ),
@@ -149,7 +172,9 @@ class _SplashScreenState extends State<SplashScreen>
                               fontSize: 38,
                               fontWeight: FontWeight.w900,
                               letterSpacing: -0.5,
-                              shadows: [Shadow(color: Color(0x30000000), blurRadius: 16)],
+                              shadows: [
+                                Shadow(color: Color(0x30000000), blurRadius: 16)
+                              ],
                             ),
                           ),
                           const SizedBox(height: 8),
@@ -164,16 +189,19 @@ class _SplashScreenState extends State<SplashScreen>
                           ),
                           const SizedBox(height: 14),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 14, vertical: 6),
                             decoration: BoxDecoration(
                               color: Colors.white.withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(20),
-                              border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+                              border: Border.all(
+                                  color: Colors.white.withValues(alpha: 0.2)),
                             ),
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                const Icon(Icons.eco_rounded, size: 12, color: Colors.white70),
+                                const Icon(Icons.eco_rounded,
+                                    size: 12, color: Colors.white70),
                                 const SizedBox(width: 6),
                                 Text(
                                   'Farming \u2022 Trading \u2022 Marketplace',
@@ -196,8 +224,7 @@ class _SplashScreenState extends State<SplashScreen>
                   Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      for (var i = 0; i < 3; i++)
-                        _LoadingDot(delay: i * 200),
+                      for (var i = 0; i < 3; i++) _LoadingDot(delay: i * 200),
                     ],
                   ),
                 ],
@@ -210,7 +237,8 @@ class _SplashScreenState extends State<SplashScreen>
   }
 
   Widget _leaf(IconData icon, double size, double opacity) {
-    return Icon(icon, size: size, color: Colors.white.withValues(alpha: opacity));
+    return Icon(icon,
+        size: size, color: Colors.white.withValues(alpha: opacity));
   }
 }
 
@@ -240,7 +268,8 @@ class _LoadingDot extends StatefulWidget {
   State<_LoadingDot> createState() => _LoadingDotState();
 }
 
-class _LoadingDotState extends State<_LoadingDot> with SingleTickerProviderStateMixin {
+class _LoadingDotState extends State<_LoadingDot>
+    with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
   late final Animation<double> _opacity;
 
@@ -273,7 +302,8 @@ class _LoadingDotState extends State<_LoadingDot> with SingleTickerProviderState
         width: 8,
         height: 8,
         margin: const EdgeInsets.symmetric(horizontal: 4),
-        decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
+        decoration:
+            const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
       ),
     );
   }

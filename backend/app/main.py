@@ -2,13 +2,15 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from . import models
-from .database import engine
-from .routers import auth, users
+from .database import engine, migrate_schema
+from .routers import ai, auth, google, otp, places, users, weather
 
-# Creates tables if they don't exist yet. Fine for early development;
-# switch to Alembic migrations once the schema starts changing often
-# after multiple people are working against a shared Postgres DB.
+# Creates tables if they don't exist yet, then applies the inline SQLite
+# migration (adds new columns to existing tables without losing data).
+# Switch to real Alembic migrations if/when the project moves to Postgres
+# or the schema starts changing between deployed environments.
 models.Base.metadata.create_all(bind=engine)
+migrate_schema()
 
 app = FastAPI(title="Jeevandhara 2 API")
 
@@ -23,7 +25,12 @@ app.add_middleware(
 )
 
 app.include_router(auth.router)
+app.include_router(google.router)
+app.include_router(otp.router)
 app.include_router(users.router)
+app.include_router(weather.router)
+app.include_router(places.router)
+app.include_router(ai.router)
 
 
 @app.get("/")

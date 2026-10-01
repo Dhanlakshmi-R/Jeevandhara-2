@@ -44,3 +44,28 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
 
     access_token = auth_utils.create_access_token(data={"sub": str(user.id)})
     return {"access_token": access_token, "token_type": "bearer"}
+
+
+@router.post("/complete-profile", response_model=schemas.AuthResult)
+def complete_profile(
+    body: schemas.ProfileCompleteRequest,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth_utils.get_current_user),
+):
+    """
+    Called after a successful Google/OTP sign-in when `profile_complete` is
+    False, to collect name/role/location before entering the app. Also usable
+    later to update profile data for any signed-in user.
+    """
+    if body.phone:
+        current_user.phone = body.phone
+    current_user.name = body.name
+    current_user.role = body.role
+    if body.location:
+        current_user.location = body.location
+    if body.profile_image:
+        current_user.profile_image = body.profile_image
+    current_user.profile_complete = True
+    db.commit()
+    db.refresh(current_user)
+    return auth_utils.issue_auth_result(current_user)
