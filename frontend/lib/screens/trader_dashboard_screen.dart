@@ -1,49 +1,28 @@
 import 'package:flutter/material.dart';
-import '../models/user.dart';
-import '../theme/colors.dart';
-import '../theme/locale.dart';
-import '../widgets/dashboard_shell.dart';
-import '../widgets/ui/buttons.dart';
-import '../widgets/ui/cards.dart';
-import 'market_prices_screen.dart';
-import 'profile_screen.dart';
+import 'package:jeevandhara2/app/destinations.dart';
+import 'package:jeevandhara2/app/shell/app_shell.dart';
+import 'package:jeevandhara2/models/user.dart';
+import 'package:jeevandhara2/theme/colors.dart';
+import 'package:jeevandhara2/theme/locale.dart';
+import 'package:jeevandhara2/widgets/ui/buttons.dart';
+import 'package:jeevandhara2/widgets/ui/cards.dart';
 
-class TraderDashboardScreen extends StatefulWidget {
-  final AppUser? user;
-
+/// The trader's entry point.
+///
+/// Like [HomeScreen] this is now a thin wrapper over [AppShell]: the deal
+/// overview is the trader's landing destination and the sidebar carries the
+/// rest. The overview survives as [TraderOverviewPage].
+class TraderDashboardScreen extends StatelessWidget {
   const TraderDashboardScreen({super.key, this.user});
 
-  @override
-  State<TraderDashboardScreen> createState() => _TraderDashboardScreenState();
-}
-
-class _TraderDashboardScreenState extends State<TraderDashboardScreen> {
-  static const _items = [
-    ShellItem(labelKey: K.overview, icon: Icons.space_dashboard_outlined, selectedIcon: Icons.space_dashboard),
-    ShellItem(labelKey: K.deals, icon: Icons.handshake_outlined, selectedIcon: Icons.handshake),
-    ShellItem(labelKey: K.postOffer, icon: Icons.add_business_outlined, selectedIcon: Icons.add_business),
-    ShellItem(labelKey: K.marketPrices, icon: Icons.trending_up, selectedIcon: Icons.trending_up),
-    ShellItem(labelKey: K.profile, icon: Icons.person_outline, selectedIcon: Icons.person),
-  ];
+  final AppUser? user;
 
   @override
-  Widget build(BuildContext context) {
-    return DashboardShell(
-      user: widget.user,
-      items: _items,
-      initialIndex: 0,
-      showLocation: true,
-      defaultLocation: 'Hubballi, Karnataka',
-      mobileDestinations: const [0, 1, 2, 3, 4],
-      pages: [
-        TraderOverviewPage(user: widget.user),
-        const TraderDealsPage(),
-        const TraderPostOfferPage(),
-        const MarketPricesScreen(),
-        ProfileScreen(user: widget.user),
-      ],
-    );
-  }
+  Widget build(BuildContext context) => AppShell(
+        role: AppRole.trader,
+        initialDestination: AppDestination.dashboard,
+        initialUser: user,
+      );
 }
 
 class TraderOverviewPage extends StatelessWidget {
@@ -51,7 +30,10 @@ class TraderOverviewPage extends StatelessWidget {
   const TraderOverviewPage({this.user});
 
   static const _kpis = [
-    _Kpi(icon: Icons.paid_outlined, label: 'This Season', value: '\u20B94,82,500'),
+    _Kpi(
+        icon: Icons.paid_outlined,
+        label: 'This Season',
+        value: '\u20B94,82,500'),
     _Kpi(icon: Icons.receipt_long_outlined, label: 'Active deals', value: '24'),
     _Kpi(icon: Icons.star_outline, label: 'Avg. rating', value: '4.6'),
   ];
@@ -107,7 +89,8 @@ class TraderOverviewPage extends StatelessWidget {
                   color: Colors.white.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(16),
                 ),
-                child: const Icon(Icons.storefront, color: Colors.white, size: 32),
+                child:
+                    const Icon(Icons.storefront, color: Colors.white, size: 32),
               ),
             ],
           ),
@@ -117,8 +100,16 @@ class TraderOverviewPage extends StatelessWidget {
         LayoutBuilder(
           builder: (context, constraints) {
             final sideBySide = constraints.maxWidth >= 640;
-            final a = _FeaturedDeal(title: 'Highest demand', subtitle: 'Wheat \u2014 prices up 5% this week', icon: Icons.trending_up, color: c.positive);
-            const b = _FeaturedDeal(title: 'Price alert', subtitle: 'Tomato crossing \u20B94,000/quintal', icon: Icons.notifications_active_outlined, color: Color(0xFFF59E0B));
+            final a = _FeaturedDeal(
+                title: 'Highest demand',
+                subtitle: 'Wheat \u2014 prices up 5% this week',
+                icon: Icons.trending_up,
+                color: c.positive);
+            const b = _FeaturedDeal(
+                title: 'Price alert',
+                subtitle: 'Tomato crossing \u20B94,000/quintal',
+                icon: Icons.notifications_active_outlined,
+                color: Color(0xFFF59E0B));
             if (sideBySide) {
               return Row(
                 children: [
@@ -194,13 +185,15 @@ class TraderOverviewPage extends StatelessWidget {
                   color: context.colors.accentLight,
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: const Icon(Icons.lightbulb_outline, color: Color(0xFFB47E00), size: 20),
+                child: const Icon(Icons.lightbulb_outline,
+                    color: Color(0xFFB47E00), size: 20),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
                   'Tip: Prices for onions are seasonally low. Consider posting a higher-volume offer to lock in better margins.',
-                  style: TextStyle(fontSize: 12.5, color: c.textPrimary, height: 1.4),
+                  style: TextStyle(
+                      fontSize: 12.5, color: c.textPrimary, height: 1.4),
                 ),
               ),
             ],
@@ -213,7 +206,8 @@ class TraderOverviewPage extends StatelessWidget {
   String _greeting(BuildContext context) {
     final hour = DateTime.now().hour;
     if (hour < 12) return context.str(K.greetingMorning, fallback: 'morning');
-    if (hour < 17) return context.str(K.greetingAfternoon, fallback: 'afternoon');
+    if (hour < 17)
+      return context.str(K.greetingAfternoon, fallback: 'afternoon');
     return context.str(K.greetingEvening, fallback: 'evening');
   }
 }
@@ -368,12 +362,16 @@ class _TraderPostOfferPageState extends State<TraderPostOfferPage> {
             children: [
               Text(
                 'New buying offer',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: c.textPrimary),
+                style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: c.textPrimary),
               ),
               const SizedBox(height: 6),
               Text(
                 'Reach nearby farmers instantly with a clear buying offer.',
-                style: TextStyle(fontSize: 13, color: c.textSecondary, height: 1.4),
+                style: TextStyle(
+                    fontSize: 13, color: c.textSecondary, height: 1.4),
               ),
               const SizedBox(height: 18),
               TextField(
@@ -432,7 +430,8 @@ class _TraderPostOfferPageState extends State<TraderPostOfferPage> {
                 icon: Icons.send_outlined,
                 onPressed: () {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Offer posted to nearby farmers!')),
+                    const SnackBar(
+                        content: Text('Offer posted to nearby farmers!')),
                   );
                 },
               ),
@@ -495,8 +494,28 @@ class _Deal {
 }
 
 const _deals = [
-  _Deal(label: 'Tomato', qty: '1,200 kg', price: '\u20B934,800', status: 'Negotiating', icon: Icons.handshake_outlined),
-  _Deal(label: 'Wheat', qty: '45 quintal', price: '\u20B91,01,250', status: 'Confirmed', icon: Icons.check_circle_outline),
-  _Deal(label: 'Onion', qty: '800 kg', price: '\u20B926,400', status: 'In transit', icon: Icons.local_shipping_outlined),
-  _Deal(label: 'Groundnut', qty: '60 quintal', price: '\u20B91,80,000', status: 'Payments due', icon: Icons.currency_rupee),
+  _Deal(
+      label: 'Tomato',
+      qty: '1,200 kg',
+      price: '\u20B934,800',
+      status: 'Negotiating',
+      icon: Icons.handshake_outlined),
+  _Deal(
+      label: 'Wheat',
+      qty: '45 quintal',
+      price: '\u20B91,01,250',
+      status: 'Confirmed',
+      icon: Icons.check_circle_outline),
+  _Deal(
+      label: 'Onion',
+      qty: '800 kg',
+      price: '\u20B926,400',
+      status: 'In transit',
+      icon: Icons.local_shipping_outlined),
+  _Deal(
+      label: 'Groundnut',
+      qty: '60 quintal',
+      price: '\u20B91,80,000',
+      status: 'Payments due',
+      icon: Icons.currency_rupee),
 ];
