@@ -18,6 +18,10 @@ Open `lib/services/api_service.dart` and check `baseUrl`:
 - **Physical device**: your computer's LAN IP, e.g. `http://192.168.1.5:8000`
   (device and computer must be on the same Wi-Fi network)
 
+`10.0.2.2` is how the Android emulator reaches the host machine's `localhost`.
+Using `localhost` from an emulator points at the emulator itself, which is the
+most common reason a fresh setup shows "Cannot reach the server".
+
 ## Run
 
 Make sure the backend (see `../backend/README.md`) is running first, then:
@@ -26,20 +30,53 @@ Make sure the backend (see `../backend/README.md`) is running first, then:
 flutter run
 ```
 
-## What's in this scaffold
+## Tests
 
-- `lib/main.dart` — checks for a saved login token on startup and routes
-  to Login or Home accordingly.
-- `lib/screens/login_screen.dart`, `register_screen.dart` — auth screens.
-- `lib/screens/home_screen.dart` — the app shell: shows the logged-in
-  user and a grid of placeholder tiles, one per ASIP objective. Each
-  tile currently just shows a "coming soon" message — replace that
-  `onTap` with real navigation as each objective is built.
-- `lib/services/api_service.dart` — all HTTP calls to the backend and
-  token storage (`shared_preferences`). Add new methods here (e.g.
-  `getWeather()`, `getCropPrices()`) as each objective's backend
-  endpoint becomes available.
-- `lib/models/user.dart` — matches the backend's `UserOut` schema.
+```bash
+cd frontend
+flutter test
+```
+
+75 tests pass. For a single file:
+
+```bash
+flutter test test/weather_screen_test.dart
+```
+
+## What's in this app
+
+- `lib/main.dart` — routes to splash → login or shell based on a saved token.
+- `lib/app/` — the destination registry and responsive shell. One registry
+  drives the sidebar, bottom nav, command palette and deep links.
+- `lib/chat/` — the assistant screen: SSE streaming, tool-result cards,
+  citation chips, thinking indicator, composer.
+- `lib/design/` — design tokens, palette, typography, motion.
+- `lib/widgets/ui/` — shared primitives (buttons, cards, inputs, modals,
+  loading/empty/error states).
+- `lib/theme/` — `app_theme.dart`, `colors.dart` (`context.colors`), and
+  `locale.dart` which holds every English and Kannada string.
+- `lib/services/api_service.dart` — HTTP calls and token storage.
+
+### App shell
+
+One shell, role-aware rather than duplicated. `AppDestination` in
+`lib/app/destinations.dart` is the single source of truth for what exists and
+who can see it; farmer-only screens are unreachable for traders because they are
+absent from that role's list, not merely greyed out.
+
+`Ctrl+K` / `⌘K` opens the command palette. Layout is responsive: sidebar on
+desktop, bottom navigation on mobile.
+
+### Assistant
+
+`lib/ai/` streams replies from `POST /ai/chat` over Server-Sent Events and can
+invoke tools, each mapped to a destination. `tool_registry.dart` is intentionally
+static — the palette and composer suggestions must render instantly and work
+offline. Availability comes from `GET /ai/capabilities` instead.
+
+The UI is fully built in English and Kannada. **Tool *answers* are not yet
+grounded in market data**: the backend's price reply is still canned text, which
+is why it does not claim to be live.
 
 ## Weather module
 
@@ -115,11 +152,39 @@ flutter test test/place_search_test.dart          # search + recommendations
 flutter test test/find_place_screen_test.dart     # picker (both paths)
 flutter test test/weather_screen_test.dart        # dashboard
 flutter test test/weather_parse_test.dart         # response parsing
+flutter test test/app_shell_test.dart             # navigation + roles
+flutter test test/ai_context_test.dart            # assistant context
 ```
 
+## Market prices screen
+
+`lib/screens/market_prices_screen.dart` currently renders
+`MarketPrice.sampleData()`. **It is not connected to any source** — the
+backend market layer exists but is not yet exposed over HTTP.
+
+The replacement needs a provenance model rather than just new fields, because
+the backend distinguishes `live`, `stale`, `unverified` and `unavailable`
+sources, and a screen that collapses those into one list of numbers is exactly
+the failure the backend was designed to prevent. Planned:
+
+- `DataOrigin` + `DataSourceStatus` in `lib/services/data_source_status.dart`
+- a shared provenance banner in `lib/widgets/ui/`
+- polling every 5 minutes while the market is open, pull-to-refresh, skeletons
+- demand-ring taps opening the component breakdown for that mandi
+
+`lib/ai/prompt/tool_registry.dart` already maps `AiTool.prices` to this screen,
+so the assistant can already navigate to it. It cannot yet answer a price
+question with real data.
+
+## Known issues
+
+`ListTile background color or ink splashes may be invisible.` — a Material
+assertion raised on the Marketplace and Profile screens where a `ListTile` sits
+inside a `DecoratedBox`. Cosmetic, but noisy in debug logs.
 
 ## What's next
 
-For each new objective, add: one method in `api_service.dart` calling
-the new backend endpoint, and one new screen in `lib/screens/`, then
-wire it into the matching tile in `home_screen.dart`.
+For each new objective, add: one method in `api_service.dart` calling the new
+backend endpoint, one screen in `lib/screens/`, and an entry in
+`AppDestinations`. Every user-visible string goes in `lib/theme/locale.dart` in
+both English and Kannada.
