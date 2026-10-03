@@ -1,0 +1,246 @@
+# ---------------------------------------------------------------------------
+# Market data source registry.
+#
+# Everything the market module knows about where numbers come from lives here
+# so it can be reviewed, changed and attributed without touching code.
+#
+# PROVENANCE IS NOT OPTIONAL. Every source records:
+#   attribution  what a user must be told when they see its numbers
+#   confidence   high | medium | low  (how much we trust the feed itself)
+#   verified     whether a real payload was ever fetched from this host during
+#                development. `verified: false` means the field mapping below is
+#                written to published documentation but has NOT been confirmed
+#                against a live response, so the source stays disabled until a
+#                health check passes at runtime.
+#
+# When prices reach a farmer, "where did this number come from" has to have an
+# answer. If a source cannot state its own attribution it must not be enabled.
+# ---------------------------------------------------------------------------
+
+version: 1
+
+# Cache TTLs, in seconds. Mirrors the weather module's approach.
+cache_ttl:
+  prices: 900        # 15 minutes
+  arrivals: 3600     # 60 minutes - eNAM/agmarknet refresh at most daily
+  demand: 3600        # 60 minutes - derived, and expensive to recompute
+  suggestions: 1800   # 30 minutes
+  mandis: 21600       # 6 hours - APMC lists change very rarely
+
+# Failover order for PRICE lookups. First healthy source wins; the chain is
+# walked in order and the first source that both is enabled and passes its
+# health check is used.
+price_chain:
+  - data_gov_in
+  - enam
+  - mandi_api
+
+# Failover order for ARRIVALS lookups. Only sources that actually publish
+# arrival quantities belong here.
+arrival_chain:
+  - enam
+  - data_gov_in
+
+sources:
+  # ---------------------------------------------------------------------
+  # 1. data.gov.in Open Government Data API - PRIMARY PRICE SOURCE
+  # ---------------------------------------------------------------------
+  data_gov_in:
+    enabled: true                      # gate is DATA_GOV_API_KEY being present
+    requires_key: DATA_GOV_API_KEY
+    confidence: high
+    verified: false                    # see note at top of file
+    verification_note: >-
+      Could not be reached from the development network (api.data.gov.in
+      origin 164.100.61.198 refuses TCP on 443 and 80), so no live payload was
+      ever seen. The endpoint shape below is from the published OGD API docs and
+      the resource id was supplied as working, but field names are UNCONFIRMED.
+      The client ships disabled-by-key: with no DATA_GOV_API_KEY set this
+      source is skipped entirely and /market/status reports it as unverified.
+    attribution: "Source: data.gov.in (Ministry of Agriculture & Farmers' Welfare)"
+    attribution_en: "Government of India, Ministry of Agriculture & Farmers' Welfare"
+    attribution_kn: "ಭಾರತ ಸರ್ಕಾರ, ಕೃಷಿ ಮತ್ತು ರೈತರ ಕಾರ್ಮಿಕ ಸಚಿವಾಲಯ"
+    license: "Government Open Data Licence - India (GODL)"
+    rate_limit_per_min: 30
+    base_url: https://api.data.gov.in
+    timeout_seconds: 15
+
+    # One entry per resource id. Do NOT hardcode a single id: the catalogue
+    # holds per-crop, per-state, monthly, historical and MSP datasets, and the
+    # right one depends on the grain the caller asked for. `grain` describes
+    # what one row represents, which is also what the client uses to decide
+    # whether the resource can answer a given request.
+    resources:
+      # Mandi-wise daily price, all commodities/states. The workhorse.
+      - id: 9ef84268-d588-465a-a308-a864a43d0070
+        name: Mandi daily wholesale prices
+        grain: market_day              # one row per market per day
+        filters: [state, district, market, commodity, date]
+        fields:
+          state: state
+          district: district
+          market: market
+          commodity: commodity
+          variety: variety
+          arrival_date: arrival_date
+          min_price: min_price
+          modal_price: modal_price
+          max_price: max_price
+        provides_arrivals: false
+        update_frequency: daily
+        enabled: true
+
+      # Minimum Support Price by crop (Dept of Consumer Affairs). Used for the
+      # msp_premium demand component only - never shown as a market rate.
+      # NOTE: resource id pending catalogue confirmation; disabled until set.
+      - id: null
+        name: MSP by commodity (Dept of Consumer Affairs)
+        grain: commodity_year
+        filters: [commodity, year]
+        fields:
+          commodity: commodity
+          msp: msp
+        provides_arrivals: false
+        update_frequency: annual
+        enabled: false
+        disabled_reason: >-
+          Resource id not yet confirmed against the live catalogue. Enabling a
+          guessed id would silently return the wrong crop's MSP.
+
+  # ---------------------------------------------------------------------
+  # 2. eNAM / Agmarknet - DEMAND SOURCE
+  # ---------------------------------------------------------------------
+  enam:
+    enabled: true
+    requires_key: null
+    confidence: medium
+    verified: false
+    verification_note: >-
+      Page HTML and its inline JavaScript were read successfully and the
+      endpoint contract below was recovered from that JavaScript, so the paths
+      and POST parameter names are believed correct. However every data
+      endpoint returned HTTP 500 with an empty body from the development
+      network, with and without a session cookie and Referer. No live row was
+      ever parsed, so field TYPES are unconfirmed.
+    attribution: "Source: eNAM / Agmarknet (National Agriculture Market Project)"
+    attribution_en: "eNAM & Agmarknet, National Agriculture Market Project"
+    attribution_kn: "ಇ-ಎನ್‌ಎಂ ಮತ್ತು ಅಗ್‌ಮಾರ್ಕ್ನೆಟ್, ರಾಷ್ಟ್ರೀಯ ಕೃಷಿ ಮಾರುಕಟ್ಟೆ ಯೋಜನೆ"
+    rate_limit_per_min: 4
+    min_interval_seconds: 1800         # never hammer: 30 minutes, per brief
+    timeout_seconds: 20
+    base_url: https://enam.gov.in
+    concurrency: 1
+    # Paths recovered from the dashboard's own JavaScript.
+    endpoints:
+      states: Agm_ctrl/states_name
+      districts: Agm_ctrl/dist_list
+      mandis: Agm_ctrl/apmc_list
+      commodities: Agm_ctrl/commodity_list
+      trade_data: Agm_ctrl/trade_data_list
+      export: Ajax_ctrl/export_trade_details
+    # Field mapping from Agm_ctrl/trade_data_list rows.
+    fields:
+      state: state
+      district: District               # note the capital D, as upstream spells it
+      market: mandi
+      commodity: Commodity
+      variety: variety
+      arrival_quantity: arrival_qty
+      min_price: minrate
+      modal_price: modelprice         # upstream typo for "modal"
+      max_price: maxrate
+      unit: Unit
+      date: trn_date
+      # mandi == 0 means the trade happened on e-NAM, otherwise off-platform.
+      enam_traded_flag: mandi
+    # IMPORTANT AND VERIFIED BY READING THEIR SOURCE: eNAM's public dashboard
+    # does NOT publish traded quantity or a trade count. Their table renderer
+    # hardcodes 0 in the trades column. So two planned demand components -
+    # off_take_ratio and buyer_competition - cannot be computed from this feed
+    # and are dropped by demand.py. Do not add them back without a real source.
+    provides_arrivals: true
+    provides_traded_quantity: false
+    provides_trade_count: false
+
+  # ---------------------------------------------------------------------
+  # 3. Agmarknet 2.0
+  # ---------------------------------------------------------------------
+  agmarknet:
+    enabled: false
+    requires_key: null
+    confidence: medium
+    verified: false
+    verification_note: >-
+      agmarknet.gov.in is reachable but is a client-side React SPA
+      (static/js/main.*.js); its JSON API is bundled in the JS and has not been
+      located yet. Disabled until someone finds and documents the endpoint.
+    attribution: "Source: Agmarknet (Government of India)"
+    attribution_en: "Agmarknet, Government of India"
+    attribution_kn: "ಅಗ್‌ಮಾರ್ಕ್ನೆಟ್, ಭಾರತ ಸರ್ಕಾರ"
+    rate_limit_per_min: 4
+    min_interval_seconds: 1800
+    base_url: https://agmarknet.gov.in
+    timeout_seconds: 20
+    provides_arrivals: true
+    provides_traded_quantity: false
+    provides_trade_count: false
+
+  # ---------------------------------------------------------------------
+  # 4. Community fallback - DEV ONLY, low confidence, never in production
+  # ---------------------------------------------------------------------
+  mandi_api:
+    enabled: true
+    dev_only: true
+    requires_key: null
+    confidence: low
+    verified: true
+    verification_note: >-
+      CONFIRMED LIVE. Two sample responses were fetched and parsed during the
+      Phase 0 spike; field names below are copied from the observed payload.
+      Health endpoint and record shape both verified.
+    attribution: "Community data (low confidence) - not an official source"
+    attribution_en: "Community-contributed data - low confidence, unofficial"
+    attribution_kn: "ಸಮುದಾಯ ದತ್ತಾಂಶ - ಕಡಿಮೆ ವಿಶ್ವಾಸಾರ್ಹ, ಅಧಿಕೃತವಲ್ಲ"
+    rate_limit_per_min: 20
+    min_interval_seconds: 60
+    timeout_seconds: 20
+    base_url: https://mandi-api.onrender.com
+    # Confirmed live from GET / on 2026-10-01, which advertises its own routes.
+    endpoints:
+      states: /v1/states
+      commodities: /v1/commodities        # takes ?state=
+      markets: /v1/markets                # takes ?state=
+      prices: /v1/prices                  # requires ?state= or ?commodity=
+      history: /v1/prices/history         # takes ?state= & ?commodity=
+    # HTTP 400 MISSING_PARAM if neither state nor commodity is supplied.
+    requires_state_or_commodity: true
+    # Observed: default page size is 200 and the `limit` query parameter is
+    # IGNORED. `date=LATEST` actually returns ~30 days, one row per market.
+    # page_size: 200
+    ignores_limit_param: true
+    date_latest_means: last_30_days_per_market
+    # KNOWN GAP: /v1/commodities?state=Karnataka lists only 4 commodities
+    # (Alasande Gram, Alsandikai, Apple, Arecanut(Betelnut/Supari)) yet
+    # /v1/prices?state=Karnataka&commodity=Onion returns rows. The vocabulary
+    # endpoint is therefore a SAMPLE, not the full list, and must never be used
+    # to restrict what the app shows the user. Filter on real query results.
+    commodities_endpoint_is_sample: true
+    fields:
+      state: state
+      district: district
+      market: market
+      commodity: commodity
+      variety: variety
+      grade: grade
+      arrival_date: arrival_date
+      min_price: min_price
+      modal_price: modal_price
+      max_price: max_price
+      upstream_id: id
+      fetched_at: fetched_at
+    provides_arrivals: false
+    provides_traded_quantity: false
+    provides_trade_count: false
+    # Measured during the spike: newest arrival_date was 7 days behind the
+    # server's own clock. Treated as stale-ish, never as "live today".
+    typical_lag_days: 7
