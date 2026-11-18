@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:jeevandhara2/models/app_notification.dart';
 import 'package:jeevandhara2/models/user.dart';
 import 'package:jeevandhara2/theme/app_theme.dart';
 import 'package:jeevandhara2/theme/colors.dart';
@@ -68,7 +67,9 @@ class _DashboardShellState extends State<DashboardShell> {
     return 0;
   }
 
-  int get _unread => AppNotification.sampleData().where((n) => !n.seen).length;
+  /// No notifications feed exists yet, so the badge reads zero rather than
+  /// counting a bundled list of alerts that were never sent.
+  int get _unread => 0;
 
   void _select(int index) => setState(() => _index = index);
 
@@ -226,7 +227,7 @@ class _Sidebar extends StatelessWidget {
             padding: EdgeInsets.symmetric(horizontal: collapsed ? 12 : 18),
             child: Row(
               children: [
-                _BrandMark(size: 40),
+                const _BrandMark(size: 40),
                 if (!collapsed) ...[
                   const SizedBox(width: 12),
                   Expanded(

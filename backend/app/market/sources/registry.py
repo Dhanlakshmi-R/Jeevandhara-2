@@ -22,6 +22,7 @@ from .base import (
     CACHE_TTL,
     PRICE_CHAIN,
     SOURCES,
+    VALID_TIERS,
     CircuitBreaker,
     MarketSource,
     SourceUnavailable,
@@ -72,6 +73,51 @@ def available_sources(kind: str = "price") -> list[str]:
     """Names from the configured chain that are currently enabled."""
     chain = ARRIVAL_CHAIN if kind == "arrival" else PRICE_CHAIN
     return [name for name in chain if get_source(name).enabled]
+
+
+#: Feeds paced explicitly during a bulk sync. A feed with a much larger floor
+#: (eNAM's 30-minute politeness interval) is not paced here - its own
+#: ``min_interval_seconds`` already stops us calling it, so the loop just
+#: moves to the next source in the chain.
+_FAST_FEED_MAX_PACE = 15.0
+
+#: Used when every enabled feed is a slow one, so the loop never spins.
+_DEFAULT_SYNC_PACE = 5.0
+
+
+def bulk_sync_pace() -> float:
+    """Seconds to sleep between crops during a bulk sync.
+
+    The slowest of the *fast* enabled feeds: pacing to the slowest feed
+    overall would make a 30-crop pass take hours, and pacing below the slowest
+    fast feed would trip its floor and silently skip crops.
+    """
+    names = list(dict.fromkeys([*PRICE_CHAIN, *ARRIVAL_CHAIN]))
+    paces = [
+        get_source(name).sync_pace
+        for name in names
+        if get_source(name).enabled
+    ]
+    fast = [p for p in paces if 0 < p <= _FAST_FEED_MAX_PACE]
+    return max(fast, default=_DEFAULT_SYNC_PACE)
+
+
+def begin_bulk_sync() -> None:
+    """Lower every source's call floor to its configured sync pace.
+
+    Only the sync loop calls this, and only around the loop: interactive reads
+    keep ``min_interval_seconds`` untouched.
+    """
+    names = list(dict.fromkeys([*PRICE_CHAIN, *ARRIVAL_CHAIN]))
+    for name in names:
+        get_source(name).set_bulk_pace(get_source(name).sync_pace)
+
+
+def end_bulk_sync() -> None:
+    """Restore the interactive floors."""
+    names = list(dict.fromkeys([*PRICE_CHAIN, *ARRIVAL_CHAIN]))
+    for name in names:
+        get_source(name).set_bulk_pace(None)
 
 
 def fetch_prices(
@@ -130,6 +176,7 @@ def _fetch_with_failover(
     **params: Any,
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     attempts: list[dict[str, str]] = []
+    answered_empty: str | None = None
 
     for name in chain:
         source = get_source(name)
@@ -145,14 +192,41 @@ def _fetch_with_failover(
         try:
             rows, meta = source.fetch(**params)
         except SourceUnavailable as exc:
-            attempts.append({"source": name, "reason": exc.reason})
+            attempts.append({"source": name, "reason": exc.reason, "kind": exc.kind})
+            if exc.kind == "no_rows":
+                # A feed that answered "I do not have this crop" has told us
+                # something true; a feed that was skipped or errored has not.
+                answered_empty = answered_empty or name
             logger.info("market source %s skipped: %s", name, exc.reason)
             continue
 
         enriched = [dict(row, _provenance=meta) for row in rows]
         return enriched, dict(meta, attempts=attempts, fallback_used=bool(attempts))
 
+    if answered_empty is not None:
+        # Nothing is quoted for this crop by any feed that could answer. That
+        # is a result - an empty list a screen can explain - not an outage,
+        # which is what the caller gets when every source was skipped or broke.
+        source = get_source(answered_empty)
+        return [], {
+            "source": source.name,
+            "attribution": str(source.config.get("attribution") or source.name),
+            "confidence": source.confidence,
+            "verified": source.verified,
+            "fetched_at": utcnow().isoformat(),
+            "stale": False,
+            "empty": True,
+            "note": NO_SOURCE_QUOTES_NOTE,
+            "attempts": attempts,
+            "fallback_used": any(a["source"] != answered_empty for a in attempts),
+        }
+
     raise NoSourceAvailable(attempts, kind=kind)
+
+
+#: Shown with an empty result that came from a working feed, so "nobody quotes
+#: this crop" never reads as "the data is broken".
+NO_SOURCE_QUOTES_NOTE = "No market source reports rows for this crop right now."
 
 
 # --------------------------------------------------------------- freshness
@@ -213,6 +287,14 @@ def annotate_freshness(
         actionable = verdict == "fresh" and lag_days is not None and lag_days <= MAX_ACTIONABLE_LAG_DAYS
 
         provenance = dict(row.get("_provenance", meta))
+        # Every served row must state its tier. Falling back to the source's
+        # declared tier rather than inventing one: a missing tier would be
+        # rendered as "unknown", which reads worse than the truth.
+        if provenance.get("tier") not in VALID_TIERS:
+            declared = str(
+                SOURCES.get(str(provenance.get("source") or ""), {}).get("tier", "C")
+            ).upper()
+            provenance["tier"] = declared if declared in VALID_TIERS else "C"
         provenance.update(
             freshness=verdict,
             actionable=actionable,
@@ -257,20 +339,22 @@ def source_status() -> list[dict[str, Any]]:
             continue
         source = get_source(name)
         missing = getattr(source, "missing_key", None)
+        if source.enabled:
+            reason = None
+        elif missing:
+            reason = f"{missing} not set"
+        elif not SOURCES[name].get("enabled"):
+            reason = "disabled in data_sources.yaml"
+        elif SOURCES[name].get("dev_only"):
+            reason = "disabled when APP_ENV=production"
+        else:
+            reason = "disabled"
         seen.append(
             dict(
                 source.status().as_dict(),
                 kind=source.kind,
                 verification_note=(SOURCES[name].get("verification_note") or "").strip(),
-                disabled_reason=(
-                    f"{missing} not set"
-                    if missing
-                    else "disabled in data_sources.yaml"
-                    if not SOURCES[name].get("enabled")
-                    else "disabled when APP_ENV=production"
-                    if SOURCES[name].get("dev_only")
-                    else None
-                ),
+                disabled_reason=reason,
             )
         )
     return seen

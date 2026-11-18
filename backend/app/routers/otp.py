@@ -1,10 +1,10 @@
 import os
 from datetime import datetime, timedelta
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
-from .. import models, schemas, auth_utils, sms
+from .. import audit, models, schemas, auth_utils, sms
 from ..database import get_db
 from ..models import generate_verification_code
 from ..phone import normalize_phone
@@ -26,6 +26,7 @@ def _placeholder_email(normalized_phone: str) -> str:
 @router.post("/otp/send", status_code=status.HTTP_200_OK)
 def send_otp(
     body: schemas.OtpSendRequest,
+    request: Request,
     db: Session = Depends(get_db),
     provider: sms.SmsProvider | None = Depends(sms.get_sms_provider),
     limiter: RateLimiter = Depends(get_rate_limiter),
@@ -90,6 +91,17 @@ def send_otp(
     db.add(row)
     db.commit()
 
+    audit.record_event(
+        db,
+        event_type=audit.EventType.otp_requested,
+        actor=None,
+        actor_role=None,
+        entity_type="phone",
+        action="otp_send",
+        metadata={"phone_suffix": phone[-4:]},
+        **audit.request_context(request),
+    )
+
     return {
         "message": "OTP sent",
         "phone": phone,
@@ -98,10 +110,26 @@ def send_otp(
 
 
 @router.post("/otp/verify", response_model=schemas.AuthResult)
-def verify_otp(body: schemas.OtpVerifyRequest, db: Session = Depends(get_db)):
+def verify_otp(
+    body: schemas.OtpVerifyRequest,
+    request: Request,
+    db: Session = Depends(get_db),
+):
     phone = normalize_phone(body.phone)
     if not phone:
         raise HTTPException(status_code=400, detail="Enter a valid Indian mobile number.")
+
+    def _fail(reason: str) -> None:
+        audit.record_event(
+            db,
+            event_type=audit.EventType.otp_failed,
+            actor=None,
+            actor_role=None,
+            entity_type="phone",
+            action="otp_verify",
+            metadata={"phone_suffix": phone[-4:], "reason": reason},
+            **audit.request_context(request),
+        )
 
     row = (
         db.query(models.OtpRequest)
@@ -110,18 +138,33 @@ def verify_otp(body: schemas.OtpVerifyRequest, db: Session = Depends(get_db)):
         .first()
     )
     if row is None:
+        _fail("no_request")
         raise HTTPException(status_code=400, detail="No code was requested for this number.")
     if row.expires_at < datetime.utcnow():
+        _fail("expired")
         raise HTTPException(status_code=400, detail="Code expired. Request a new one.")
     if row.attempt_count >= OTP_MAX_ATTEMPTS:
+        _fail("locked")
         raise HTTPException(status_code=429, detail="Too many incorrect attempts. Request a new code.")
 
     if not auth_utils.verify_otp(body.otp.strip(), row.code_hash):
         row.attempt_count += 1
         db.commit()
+        _fail("incorrect")
         raise HTTPException(status_code=400, detail="Incorrect code. Please try again.")
 
     db.delete(row)
+    db.commit()
+    audit.record_event(
+        db,
+        event_type=audit.EventType.otp_verified,
+        actor=None,
+        actor_role=None,
+        entity_type="phone",
+        action="otp_verify",
+        metadata={"phone_suffix": phone[-4:]},
+        **audit.request_context(request),
+    )
 
     user = (
         db.query(models.User)
@@ -146,10 +189,20 @@ def verify_otp(body: schemas.OtpVerifyRequest, db: Session = Depends(get_db)):
         db.add(user)
         db.commit()
         db.refresh(user)
+        audit.record_event(
+            db,
+            event_type=audit.EventType.profile_created,
+            actor=user,
+            entity_type="user",
+            entity_id=user.id,
+            action="register",
+            metadata={"role": user.role.value, "auth_provider": "phone"},
+            **audit.request_context(request),
+        )
     else:
         user.phone = phone
         user.phone_verified = True
         db.commit()
         db.refresh(user)
 
-    return auth_utils.issue_auth_result(user)
+    return auth_utils.issue_auth_result(user, db, request)

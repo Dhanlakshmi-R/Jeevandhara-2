@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:jeevandhara2/admin/admin_shell.dart';
 import 'package:jeevandhara2/services/api_service.dart';
 import 'package:jeevandhara2/theme/colors.dart';
 import 'package:jeevandhara2/theme/locale.dart';
@@ -71,6 +72,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     Widget next;
     if (!loggedIn) {
       next = const LoginScreen();
+    } else if (role == 'admin') {
+      next = const AdminShell();
     } else if (role != null && role != 'farmer') {
       next = const TraderDashboardScreen();
     } else {

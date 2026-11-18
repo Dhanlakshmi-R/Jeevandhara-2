@@ -15,6 +15,14 @@
 #
 # When prices reach a farmer, "where did this number come from" has to have an
 # answer. If a source cannot state its own attribution it must not be enabled.
+#
+# TIERS - which every row and every screen carries, so a user can see at a
+# glance how much a number is worth:
+#   A  official statistics or a government platform (data.gov.in, eNAM, Agmarknet)
+#   B  first-party: a number this app itself owns (a farmer's inquiry, a listing)
+#   C  a third-party or community feed we do not control (mandi_api)
+#   D  derived: computed in-app from A/B/C inputs, always labelled an estimate
+#   E  never permitted. No seeded, mocked or illustrative row may reach a user.
 # ---------------------------------------------------------------------------
 
 version: 1
@@ -48,6 +56,7 @@ sources:
   data_gov_in:
     enabled: true                      # gate is DATA_GOV_API_KEY being present
     requires_key: DATA_GOV_API_KEY
+    tier: A                            # official statistics; see tier note below
     confidence: high
     verified: false                    # see note at top of file
     verification_note: >-
@@ -113,6 +122,7 @@ sources:
   enam:
     enabled: true
     requires_key: null
+    tier: A                            # government platform (eNAM/Agmarknet)
     confidence: medium
     verified: false
     verification_note: >-
@@ -168,6 +178,7 @@ sources:
   agmarknet:
     enabled: false
     requires_key: null
+    tier: A                            # government platform
     confidence: medium
     verified: false
     verification_note: >-
@@ -192,6 +203,7 @@ sources:
     enabled: true
     dev_only: true
     requires_key: null
+    tier: C                            # third-party community feed, not official
     confidence: low
     verified: true
     verification_note: >-
@@ -203,6 +215,10 @@ sources:
     attribution_kn: "ಸಮುದಾಯ ದತ್ತಾಂಶ - ಕಡಿಮೆ ವಿಶ್ವಾಸಾರ್ಹ, ಅಧಿಕೃತವಲ್ಲ"
     rate_limit_per_min: 20
     min_interval_seconds: 60
+    # Bulk sync only: the feed publishes 20 calls/min, so a 30-crop backfill
+    # paces at 5s (~12/min) instead of one crop every 60s. Interactive reads
+    # keep the 60s floor above.
+    sync_min_interval_seconds: 5
     timeout_seconds: 20
     base_url: https://mandi-api.onrender.com
     # Confirmed live from GET / on 2026-10-01, which advertises its own routes.

@@ -1,7 +1,7 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from sqlalchemy.orm import Session
 
-from .. import models, schemas, auth_utils, google_auth
+from .. import audit, models, schemas, auth_utils, google_auth
 from ..database import get_db
 from ..google_auth import google_verifier
 
@@ -11,6 +11,7 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 @router.post("/google", response_model=schemas.AuthResult)
 def google_login(
     body: schemas.GoogleAuthRequest,
+    request: Request,
     db: Session = Depends(get_db),
     verify=Depends(google_verifier),
 ):
@@ -39,6 +40,16 @@ def google_login(
         db.add(user)
         db.commit()
         db.refresh(user)
+        audit.record_event(
+            db,
+            event_type=audit.EventType.profile_created,
+            actor=user,
+            entity_type="user",
+            entity_id=user.id,
+            action="register",
+            metadata={"role": user.role.value, "auth_provider": "google"},
+            **audit.request_context(request),
+        )
     else:
         if user.auth_provider is None or user.auth_provider == models.AuthProvider.password:
             user.auth_provider = models.AuthProvider.google
@@ -48,4 +59,4 @@ def google_login(
         db.commit()
         db.refresh(user)
 
-    return auth_utils.issue_auth_result(user)
+    return auth_utils.issue_auth_result(user, db, request)

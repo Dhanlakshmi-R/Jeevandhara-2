@@ -29,8 +29,14 @@ class ChatController extends ChangeNotifier {
   }
 
   final AiService _service;
+
+  Future<String> translateText(String text, String language) =>
+      _service.translate(text: text, language: language);
   final ChatRepository _repository;
   final AiContext _context;
+
+  /// Language for assistant replies: en, kn, hi.
+  String language = 'en';
 
   ChatSession _session = ChatSession.fresh();
   List<ChatMessage> get messages => _session.messages;
@@ -117,7 +123,14 @@ class ChatController extends ChangeNotifier {
     _error = null;
     _draft = '';
 
-    final userMessage = ChatMessage.user(trimmed);
+    // Translate the user's input into the active language so the whole
+    // conversation stays in that language even when typed in English.
+    final translated = await _service.translate(
+      text: trimmed,
+      language: language,
+    );
+
+    final userMessage = ChatMessage.user(translated);
     final assistantMessage = ChatMessage(
       role: ChatRole.assistant,
       text: '',
@@ -135,9 +148,10 @@ class ChatController extends ChangeNotifier {
       // Only the last message changes, so this stays cheap even at 45 deltas
       // per second.
       await _service.streamReply(
-        prompt: trimmed,
+        prompt: translated,
         message: assistantMessage,
         onProgress: notifyListeners,
+        language: language,
       );
     } finally {
       _isBusy = false;

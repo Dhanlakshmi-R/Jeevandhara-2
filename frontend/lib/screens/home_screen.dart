@@ -2,14 +2,25 @@ import 'package:flutter/material.dart';
 
 import 'package:jeevandhara2/app/destinations.dart';
 import 'package:jeevandhara2/app/shell/app_shell.dart';
+import 'package:jeevandhara2/design/provenance.dart';
+import 'package:jeevandhara2/models/crop.dart';
 import 'package:jeevandhara2/models/market_price.dart';
-import 'package:jeevandhara2/models/trader.dart';
 import 'package:jeevandhara2/models/user.dart';
 import 'package:jeevandhara2/models/weather.dart';
+import 'package:jeevandhara2/models/weather_data.dart';
+import 'package:jeevandhara2/models/soil_moisture.dart';
 import 'package:jeevandhara2/services/api_service.dart';
+import 'package:jeevandhara2/services/crops_service.dart';
+import 'package:jeevandhara2/services/market_service.dart';
+import 'package:jeevandhara2/services/weather_place_store.dart';
+import 'package:jeevandhara2/services/weather_service.dart';
+import 'package:jeevandhara2/services/soil_moisture_service.dart';
 import 'package:jeevandhara2/theme/colors.dart';
+import 'package:jeevandhara2/theme/locale.dart';
 import 'package:jeevandhara2/widgets/layout.dart';
 import 'package:jeevandhara2/widgets/ui/cards.dart';
+import 'package:jeevandhara2/widgets/ui/provenance_chip.dart';
+import 'package:jeevandhara2/widgets/ui/states.dart';
 import 'package:jeevandhara2/widgets/weather_card.dart';
 
 /// The farmer's entry point.
@@ -38,8 +49,14 @@ class HomeScreen extends StatelessWidget {
 class FarmerDashboardPage extends StatefulWidget {
   final AppUser? user;
   final Future<void> Function()? onRefresh;
+  final WeatherService? weatherService;
 
-  const FarmerDashboardPage({super.key, this.user, this.onRefresh});
+  const FarmerDashboardPage({
+    super.key,
+    this.user,
+    this.onRefresh,
+    this.weatherService,
+  });
 
   @override
   State<FarmerDashboardPage> createState() => FarmerDashboardPageState();
@@ -92,7 +109,7 @@ class FarmerDashboardPageState extends State<FarmerDashboardPage> {
           const SizedBox(height: 8),
           _WelcomeBanner(name: _user?.name),
           const SizedBox(height: 20),
-          _DashboardGrid(),
+          _DashboardGrid(weatherService: widget.weatherService),
           const SizedBox(height: 20),
           _buildQuickActions(),
           const SizedBox(height: 20),
@@ -126,9 +143,9 @@ class FarmerDashboardPageState extends State<FarmerDashboardPage> {
                 crossAxisSpacing: 12,
                 mainAxisSpacing: 12,
               ),
-              itemCount: _quickActions.length,
+              itemCount: _quickActions(context).length,
               itemBuilder: (context, i) =>
-                  _QuickActionCard(spec: _quickActions[i]),
+                  _QuickActionCard(spec: _quickActions(context)[i]),
             );
           },
         ),
@@ -312,7 +329,9 @@ class _BannerStat extends StatelessWidget {
 }
 
 class _DashboardGrid extends StatelessWidget {
-  _DashboardGrid();
+  final WeatherService? weatherService;
+  const _DashboardGrid({this.weatherService});
+
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -323,26 +342,419 @@ class _DashboardGrid extends StatelessWidget {
             actionLabel: 'Details',
             actionIcon: Icons.arrow_forward_ios),
         const SizedBox(height: 10),
-        WeatherCard(weather: Weather.sampleDharwad(), onMore: () {}),
+        _WeatherSummaryCard(
+          service: weatherService,
+          onMore: () =>
+              AppShellScope.maybeOf(context)?.open(AppDestination.weather),
+        ),
+        const SizedBox(height: 20),
+        const SectionHeader(
+            title: 'Soil Moisture',
+            actionLabel: 'Details',
+            actionIcon: Icons.arrow_forward_ios),
+        const SizedBox(height: 10),
+        const _SoilMoistureCard(),
         const SizedBox(height: 20),
         const SectionHeader(
             title: 'Live Market Prices',
             actionLabel: 'View All',
             actionIcon: Icons.trending_up),
         const SizedBox(height: 10),
-        SizedBox(
-            height: 130,
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              itemCount: _prices.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 12),
-              itemBuilder: (context, i) => _MiniPriceCard(price: _prices[i]),
-            )),
+        const _MiniPrices(),
       ],
     );
   }
+}
 
-  final List<MarketPrice> _prices = MarketPrice.sampleData();
+/// Real weather summary card for the dashboard.
+class _WeatherSummaryCard extends StatefulWidget {
+  final WeatherService? service;
+  final VoidCallback? onMore;
+
+  const _WeatherSummaryCard({this.service, this.onMore});
+
+  @override
+  State<_WeatherSummaryCard> createState() => _WeatherSummaryCardState();
+}
+
+class _WeatherSummaryCardState extends State<_WeatherSummaryCard> {
+  late final WeatherService _service = widget.service ?? WeatherService();
+  final WeatherPlaceStore _store = WeatherPlaceStore();
+  Weather? _weather;
+  bool _loading = true;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    WeatherSuggestion place;
+    final saved = await _store.load();
+    if (saved != null) {
+      place = saved;
+    } else {
+      place = const WeatherSuggestion(
+        name: 'Dharwad',
+        region: 'Karnataka',
+        country: 'India',
+        lat: 15.46,
+        lon: 75.01,
+      );
+    }
+    try {
+      final data = await _service.fetchWeather(
+        lat: place.lat,
+        lon: place.lon,
+        name: place.name,
+      );
+      if (!mounted) return;
+      final location = data.region.isNotEmpty
+          ? '${data.name}, ${data.region}'
+          : (data.name.isNotEmpty ? data.name : place.label);
+      setState(() {
+        _weather = Weather(
+          location: location,
+          temperature: data.tempC,
+          condition: data.condition.text,
+          rainChance: data.todayRainChance.round(),
+        );
+        _loading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _error = e.toString().replaceFirst('Exception: ', '');
+        _loading = false;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    if (_loading) {
+      return const SizedBox(
+        height: 150,
+        child: Center(child: CircularProgressIndicator(strokeWidth: 2.4)),
+      );
+    }
+    if (_error != null) {
+      return Container(
+        height: 150,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: c.surface,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: c.border),
+        ),
+        child: Row(children: [
+          Icon(Icons.cloud_off, color: c.warning),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              'Weather unavailable. $_error',
+              style: TextStyle(fontSize: 13, color: c.textSecondary),
+            ),
+          ),
+          TextButton(onPressed: _load, child: const Text('Retry')),
+        ]),
+      );
+    }
+    final weather = _weather;
+    if (weather == null) {
+      return const SizedBox(height: 150);
+    }
+    return WeatherCard(weather: weather, onMore: widget.onMore);
+  }
+}
+
+class _SoilMoistureCard extends StatefulWidget {
+  const _SoilMoistureCard();
+
+  @override
+  State<_SoilMoistureCard> createState() => _SoilMoistureCardState();
+}
+
+class _SoilMoistureCardState extends State<_SoilMoistureCard> {
+  final SoilMoistureService _service = SoilMoistureService();
+  SoilMoistureReading? _reading;
+  bool _loading = true;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final r = await _service.latest();
+      if (!mounted) return;
+      setState(() {
+        _reading = r;
+        _loading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _error = e.toString().replaceFirst('Exception: ', '');
+        _loading = false;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    if (_loading) {
+      return const SizedBox(
+        height: 90,
+        child: Center(child: CircularProgressIndicator(strokeWidth: 2.4)),
+      );
+    }
+    if (_error != null) {
+      return Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: c.surface,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: c.border),
+        ),
+        child: Row(children: [
+          Icon(Icons.cloud_off, color: c.warning),
+          const SizedBox(width: 10),
+          Expanded(child: Text('Soil sensor unavailable. $_error', style: TextStyle(fontSize: 13, color: c.textSecondary))),
+          TextButton(onPressed: _load, child: const Text('Retry')),
+        ]),
+      );
+    }
+    final r = _reading;
+    if (r == null) {
+      return Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: c.surface,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: c.border),
+        ),
+        child: Row(children: [
+          Icon(Icons.sensors_off, color: c.textSecondary),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              'No soil-moisture sensor connected yet. Point your device at '
+              'POST /sensors/soil-moisture to start reporting.',
+              style: TextStyle(fontSize: 13, color: c.textSecondary),
+            ),
+          ),
+        ]),
+      );
+    }
+    final pct = r.moisturePct;
+    final advice = pct < 30
+        ? 'Low moisture — irrigate soon.'
+        : pct < 60
+            ? 'Moderate moisture — monitor daily.'
+            : 'Good moisture — no irrigation needed.';
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: c.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: c.border),
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          Icon(Icons.grass, color: c.primary),
+          const SizedBox(width: 8),
+          Text('Soil moisture', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: c.textPrimary)),
+          const Spacer(),
+          Text('${pct.toStringAsFixed(0)}%', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: c.primaryDark)),
+        ]),
+        const SizedBox(height: 6),
+        Text(advice, style: TextStyle(fontSize: 13, color: c.textSecondary)),
+        if (r.temperatureC != null) ...[
+          const SizedBox(height: 4),
+          Text('Soil temp ${r.temperatureC!.toStringAsFixed(1)}°C', style: TextStyle(fontSize: 12, color: c.textSecondary)),
+        ],
+      ]),
+    );
+  }
+}
+
+/// A short strip of real quotations for crops we actually hold rows for.
+///
+/// This used to be a bundled list of six invented crops with invented trends,
+/// painted on the first screen a farmer sees. It now reads `/market/prices`
+/// for the first crops storage can answer for, and says plainly when it
+/// cannot: a dashboard that shows nothing is recoverable, one that shows a
+/// confident wrong rate is not.
+class _MiniPrices extends StatefulWidget {
+  const _MiniPrices();
+
+  @override
+  State<_MiniPrices> createState() => _MiniPricesState();
+}
+
+class _MiniPricesState extends State<_MiniPrices> {
+  final MarketService _service = MarketService();
+  List<MarketPrice> _rows = [];
+  bool _loading = true;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    // Two round trips by design: the crop list tells us which rows exist, so
+    // we never fire off requests for crops nobody has quoted.
+    List<String> crops;
+    try {
+      final items = await _service.commodities();
+      crops = [for (final i in items.take(4)) i.commodity];
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _error = 'Market feed unreachable';
+      });
+      return;
+    }
+    if (crops.isEmpty) {
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _rows = [];
+      });
+      return;
+    }
+
+    final pages = await Future.wait([
+      for (final crop in crops)
+        // A crop that fails is simply skipped: the strip would rather show
+        // three real rows than a fourth padded with a placeholder.
+        _service
+            .prices(commodity: crop, limit: 1)
+            .then((p) => p.rows)
+            .catchError((_) => <MarketPrice>[]),
+    ]);
+    if (!mounted) return;
+    setState(() {
+      // One freshest row per crop, newest first, so the strip cannot repeat
+      // the same mandi four times.
+      final best = <String, MarketPrice>{};
+      for (final rows in pages) {
+        for (final r in rows) {
+          final prev = best[r.commodity];
+          if (prev == null ||
+              (r.date?.isAfter(prev.date ?? DateTime(0)) ?? false)) {
+            best[r.commodity] = r;
+          }
+        }
+      }
+      final all = best.values.toList()..sort(_compareByFreshness);
+      _rows = all;
+      _loading = false;
+    });
+  }
+
+  /// Fresh rows first - a dashboard strip that leads with last week's rate
+  /// makes the whole app look stale - then newest observation first.
+  static int _compareByFreshness(MarketPrice a, MarketPrice b) {
+    int rank(Freshness f) => switch (f) {
+          Freshness.fresh => 0,
+          Freshness.stale => 1,
+          Freshness.unverified => 2,
+          Freshness.unknown => 3,
+        };
+    final byFresh =
+        rank(a.provenance.freshness).compareTo(rank(b.provenance.freshness));
+    if (byFresh != 0) return byFresh;
+    return (b.date ?? DateTime(0)).compareTo(a.date ?? DateTime(0));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    if (_loading) {
+      return const SizedBox(
+        height: 130,
+        child: Row(
+          children: [
+            SkeletonBox(width: 210, height: 114),
+            SizedBox(width: 12),
+            SkeletonBox(width: 210, height: 114),
+          ],
+        ),
+      );
+    }
+    if (_error != null) {
+      return Container(
+        height: 130,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: c.surface,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: c.border),
+        ),
+        child: Row(children: [
+          Icon(Icons.cloud_off, color: c.warning),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              '$_error. ${context.str(K.pricesUnavailableRightNow)}',
+              style: TextStyle(fontSize: 13, color: c.textSecondary),
+            ),
+          ),
+        ]),
+      );
+    }
+    if (_rows.isEmpty) {
+      return Container(
+        height: 130,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: c.surface,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: c.border),
+        ),
+        child: Row(children: [
+          Icon(Icons.trending_up, color: c.primary),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              context.str(K.noQuotationsYet),
+              style: TextStyle(fontSize: 13, color: c.textSecondary),
+            ),
+          ),
+        ]),
+      );
+    }
+    return SizedBox(
+      height: 130,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: _rows.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 12),
+        itemBuilder: (context, i) => _MiniPriceCard(price: _rows[i]),
+      ),
+    );
+  }
 }
 
 class _MiniPriceCard extends StatelessWidget {
@@ -351,7 +763,6 @@ class _MiniPriceCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final trendColor = price.isRising ? c.positive : c.negative;
     return Container(
       width: 210,
       padding: const EdgeInsets.all(16),
@@ -364,26 +775,28 @@ class _MiniPriceCard extends StatelessWidget {
                 color: c.shadow, blurRadius: 8, offset: const Offset(0, 3))
           ]),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Row(children: [
-          Text(price.emoji, style: const TextStyle(fontSize: 24)),
-          const Spacer(),
-          StatusBadge(
-              text: price.changePercent >= 0
-                  ? '+${price.changePercent.toStringAsFixed(1)}%'
-                  : '${price.changePercent.toStringAsFixed(1)}%',
-              color: trendColor)
-        ]),
-        const Spacer(),
-        Text(price.crop,
-            style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: c.textPrimary)),
-        Text(price.priceLabel,
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(price.commodity,
+                  style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: c.textPrimary)),
+              Text(price.market ?? context.str(K.mandiNotReported),
+                  style: TextStyle(fontSize: 11, color: c.textSecondary)),
+            ],
+          ),
+        ),
+        Text(price.priceLabelOf(context.str),
             style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w800,
                 color: c.primaryDark)),
+        const SizedBox(height: 6),
+        ProvenanceChip(provenance: price.provenance, dense: true),
       ]),
     );
   }
@@ -396,23 +809,67 @@ class _RecentSection extends StatelessWidget {
     return LayoutBuilder(builder: (context, constraints) {
       final sideBySide = constraints.maxWidth >= 840;
       if (sideBySide) {
-        return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Expanded(child: _ListingsCard()),
-          const SizedBox(width: 16),
-          Expanded(child: _OffersCard())
-        ]);
+        return const Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(child: _ListingsCard()),
+              SizedBox(width: 16),
+              Expanded(child: _OffersCard())
+            ]);
       }
-      return Column(children: [
-        _ListingsCard(),
-        const SizedBox(height: 16),
-        _OffersCard()
-      ]);
+      return const Column(
+          children: [_ListingsCard(), SizedBox(height: 16), _OffersCard()]);
     });
   }
 }
 
-class _ListingsCard extends StatelessWidget {
+class _ListingsCard extends StatefulWidget {
   const _ListingsCard();
+
+  @override
+  State<_ListingsCard> createState() => _ListingsCardState();
+}
+
+class _ListingsCardState extends State<_ListingsCard> {
+  final CropsService _service = CropsService();
+  List<CropListing> _crops = const [];
+  bool _loading = true;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _reload();
+  }
+
+  Future<void> _reload() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final crops = await _service.crops();
+      if (!mounted) return;
+      setState(() {
+        _crops = crops
+            .where((crop) => !crop.isHidden)
+            .take(3)
+            .toList(growable: false);
+        _loading = false;
+      });
+    } on Exception catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _error = e.toString();
+      });
+    }
+  }
+
+  void _openMyCrops() {
+    AppShellScope.maybeOf(context)?.open(AppDestination.myCrops);
+  }
+
   @override
   Widget build(BuildContext context) {
     return AppCard(
@@ -424,40 +881,68 @@ class _ListingsCard extends StatelessWidget {
                     fontSize: 16,
                     fontWeight: FontWeight.w700,
                     color: context.colors.textPrimary)),
-            TextButton(onPressed: () {}, child: const Text('View all'))
+            TextButton(onPressed: _openMyCrops, child: const Text('View all'))
           ]),
           const Divider(),
           const SizedBox(height: 8),
-          ...CropListingSample.samples.map((c) => _CropRow(crop: c)),
+          ..._body(context),
         ]));
+  }
+
+  List<Widget> _body(BuildContext context) {
+    final c = context.colors;
+    if (_loading) {
+      return const [LoadingSkeleton(rows: 2)];
+    }
+    if (_error != null) {
+      return [
+        Row(children: [
+          Icon(Icons.cloud_off_outlined, size: 18, color: c.textSecondary),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              'Could not load your crops',
+              style: TextStyle(fontSize: 12.5, color: c.textSecondary),
+            ),
+          ),
+          TextButton(onPressed: _reload, child: const Text('Retry')),
+        ]),
+      ];
+    }
+    if (_crops.isEmpty) {
+      return [
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          child: Row(children: [
+            Icon(Icons.eco_outlined, size: 18, color: c.textSecondary),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                'No crops listed yet.',
+                style: TextStyle(fontSize: 12.5, color: c.textSecondary),
+              ),
+            ),
+            TextButton(
+                onPressed: _openMyCrops, child: const Text('List a crop')),
+          ]),
+        ),
+      ];
+    }
+    return [for (final crop in _crops) _CropRow(crop: crop)];
   }
 }
 
-class CropListingSample {
-  static const samples = [
-    CropRowData('\uD83C\uDF45', 'Tomato', '250 kg', 'Active', '\u20B928/kg'),
-    CropRowData('\uD83C\uDF3E', 'Wheat', '5 quintal', 'Offer received',
-        '\u20B92,200/q'),
-    CropRowData('\uD83E\uDDC5', 'Onion', '1 quintal', 'Sold', '\u20B936/kg'),
-  ];
-}
-
-class CropRowData {
-  final String emoji, name, qty, status, price;
-  const CropRowData(this.emoji, this.name, this.qty, this.status, this.price);
-}
-
 class _CropRow extends StatelessWidget {
-  final CropRowData crop;
+  final CropListing crop;
   const _CropRow({required this.crop});
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final statusColor = crop.status == 'Sold'
+    final statusColor = crop.isSold
         ? c.textSecondary
-        : crop.status == 'Offer received'
-            ? c.accent
-            : c.positive;
+        : crop.isActive
+            ? c.positive
+            : c.textSecondary;
     return Padding(
         padding: const EdgeInsets.symmetric(vertical: 10),
         child: Row(children: [
@@ -480,17 +965,17 @@ class _CropRow extends StatelessWidget {
                         fontSize: 14,
                         fontWeight: FontWeight.w700,
                         color: c.textPrimary)),
-                Text(crop.qty,
+                Text(crop.quantityLabel,
                     style: TextStyle(fontSize: 12, color: c.textSecondary))
               ])),
           Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-            Text(crop.price,
+            Text(crop.priceLabel,
                 style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w700,
                     color: c.primaryDark)),
             const SizedBox(height: 3),
-            StatusBadge(text: crop.status, color: statusColor)
+            StatusBadge(text: crop.statusLabel, color: statusColor)
           ]),
         ]));
   }
@@ -500,57 +985,21 @@ class _OffersCard extends StatelessWidget {
   const _OffersCard();
   @override
   Widget build(BuildContext context) {
-    return AppCard(
-        padding: const EdgeInsets.all(18),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-            Text('Recent Trader Offers',
-                style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                    color: context.colors.textPrimary)),
-            TextButton(onPressed: () {}, child: const Text('View all'))
-          ]),
-          const Divider(),
-          const SizedBox(height: 8),
-          ...Trader.sampleData().take(3).map((t) => _OfferRow(trader: t)),
-        ]));
-  }
-}
-
-class _OfferRow extends StatelessWidget {
-  final Trader trader;
-  const _OfferRow({required this.trader});
-  @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    return Padding(
-        padding: const EdgeInsets.symmetric(vertical: 10),
-        child: Row(children: [
-          Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                  color: c.primaryLight,
-                  borderRadius: BorderRadius.circular(12)),
-              child: Center(
-                  child: Text(trader.emoji,
-                      style: const TextStyle(fontSize: 22)))),
-          const SizedBox(width: 12),
-          Expanded(
-              child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                Text(trader.name,
-                    style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                        color: c.textPrimary)),
-                Text('${trader.cropType} \u2022 ${trader.distance}',
-                    style: TextStyle(fontSize: 12, color: c.textSecondary))
-              ])),
-          StatusBadge(text: trader.offeredPrice, color: c.positive),
-        ]));
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SectionHeader(
+            title: 'Recent Trader Offers',
+            actionLabel: 'View All',
+            actionIcon: Icons.people_outline),
+        const SizedBox(height: 10),
+        EmptyState(
+          icon: Icons.people_outline,
+          title: context.str(K.noOffersYet),
+          subtitle: context.str(K.noOffersYetHint),
+        ),
+      ],
+    );
   }
 }
 
@@ -594,29 +1043,33 @@ class _TipCard extends StatelessWidget {
   }
 }
 
-final List<_QuickActionSpec> _quickActions = [
-  _QuickActionSpec(
-      title: 'Sell Crop',
-      subtitle: 'List produce to traders',
-      icon: Icons.sell_outlined,
-      color: const Color(0xFF1F6B45),
-      onTap: () {}),
-  _QuickActionSpec(
-      title: 'Analyze Quality',
-      subtitle: 'AI grade & scan crops',
-      icon: Icons.biotech_outlined,
-      color: const Color(0xFF5DAE54),
-      onTap: () {}),
-  _QuickActionSpec(
-      title: 'Find Traders',
-      subtitle: 'Matched buyers nearby',
-      icon: Icons.handshake_outlined,
-      color: const Color(0xFFF4B942),
-      onTap: () {}),
-  _QuickActionSpec(
-      title: 'Rent Tools',
-      subtitle: 'Tractors & equipment',
-      icon: Icons.agriculture_outlined,
-      color: const Color(0xFF2E86AB),
-      onTap: () {}),
-];
+List<_QuickActionSpec> _quickActions(BuildContext context) => [
+      _QuickActionSpec(
+          title: 'Sell Crop',
+          subtitle: 'List produce to traders',
+          icon: Icons.sell_outlined,
+          color: const Color(0xFF1F6B45),
+          onTap: () =>
+              AppShellScope.maybeOf(context)?.open(AppDestination.myCrops)),
+      _QuickActionSpec(
+          title: 'Analyze Quality',
+          subtitle: 'AI grade & scan crops',
+          icon: Icons.biotech_outlined,
+          color: const Color(0xFF5DAE54),
+          onTap: () => AppShellScope.maybeOf(context)
+              ?.open(AppDestination.qualityAnalysis)),
+      _QuickActionSpec(
+          title: 'Find Traders',
+          subtitle: 'Matched buyers nearby',
+          icon: Icons.handshake_outlined,
+          color: const Color(0xFFF4B942),
+          onTap: () =>
+              AppShellScope.maybeOf(context)?.open(AppDestination.traders)),
+      _QuickActionSpec(
+          title: 'Rent Tools',
+          subtitle: 'Tractors & equipment',
+          icon: Icons.agriculture_outlined,
+          color: const Color(0xFF2E86AB),
+          onTap: () =>
+              AppShellScope.maybeOf(context)?.open(AppDestination.toolRental)),
+    ];

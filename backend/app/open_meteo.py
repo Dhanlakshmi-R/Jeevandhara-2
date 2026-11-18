@@ -25,6 +25,11 @@ _GEOCODE_BASE = os.getenv(
     "OPEN_METEO_GEOCODE_BASE", "https://geocoding-api.open-meteo.com/v1"
 )
 _FORECAST_BASE = os.getenv("OPEN_METEO_BASE", "https://api.open-meteo.com/v1")
+# Air quality lives on a separate Open-Meteo host. Best-effort: if it is slow or
+# down we simply omit the reading (never invent one).
+_AQI_BASE = os.getenv(
+    "OPEN_METEO_AQI_BASE", "https://air-quality-api.open-meteo.com/v1"
+)
 
 # WMO 4677 weather codes as used by Open-Meteo -> human text.
 # The Flutter client picks a Material icon by matching substrings in this
@@ -68,7 +73,8 @@ _COMPASS = (
 
 _CURRENT_FIELDS = (
     "temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,"
-    "weather_code,wind_speed_10m,wind_direction_10m,is_day"
+    "weather_code,wind_speed_10m,wind_direction_10m,is_day,"
+    "surface_pressure,visibility"
 )
 _HOURLY_FIELDS = "temperature_2m,precipitation_probability,weather_code"
 _DAILY_FIELDS = (
@@ -118,6 +124,77 @@ def _compass(degrees) -> str:
     except (TypeError, ValueError):
         return ""
     return _COMPASS[index]
+
+
+# US EPA air-quality index (1-6) to a plain-language category. Canonical here;
+# `weather_service` imports it so both providers agree on the wording.
+_EPA_CATEGORY = {
+    1: "Good",
+    2: "Moderate",
+    3: "Unhealthy for sensitive groups",
+    4: "Unhealthy",
+    5: "Very unhealthy",
+    6: "Hazardous",
+}
+
+
+def epa_index_from_aqi(aqi) -> int | None:
+    """Bucket a 0-500 US AQI number into the 1-6 EPA index."""
+    try:
+        value = float(aqi)
+    except (TypeError, ValueError):
+        return None
+    if value <= 50:
+        return 1
+    if value <= 100:
+        return 2
+    if value <= 150:
+        return 3
+    if value <= 200:
+        return 4
+    if value <= 300:
+        return 5
+    return 6
+
+
+def epa_category(index) -> str:
+    return _EPA_CATEGORY.get(index, "")
+
+
+def _fetch_air_quality(lat: float, lon: float) -> dict | None:
+    """Best-effort US AQI. Returns None on any failure -- a missing reading is
+    reported as unavailable rather than faked."""
+    try:
+        payload = _get_json(
+            _AQI_BASE,
+            "air-quality",
+            {
+                "latitude": f"{lat}",
+                "longitude": f"{lon}",
+                "current": "us_aqi,pm2_5,pm10",
+                "timezone": "auto",
+            },
+        )
+    except Exception:  # noqa: BLE001 - any provider/transport error -> no AQI
+        return None
+
+    cur = payload.get("current") if isinstance(payload, dict) else None
+    if not isinstance(cur, dict):
+        return None
+    index = epa_index_from_aqi(cur.get("us_aqi"))
+    if index is None:
+        return None
+    try:
+        aqi_int = int(round(float(cur.get("us_aqi"))))
+    except (TypeError, ValueError):
+        aqi_int = None
+    return {
+        "aqi": aqi_int,
+        "us_epa_index": index,
+        "category": epa_category(index),
+        "pm2_5": cur.get("pm2_5"),
+        "pm10": cur.get("pm10"),
+    }
 
 
 def _at(values, index, key=None):
@@ -236,6 +313,13 @@ def fetch(lat: float, lon: float, name: str = "") -> dict:
     # for the current reading. Real provider data either way — never invented.
     today_uv = daily_out[0]["uv"] if daily_out else None
 
+    # Visibility arrives in metres; the app speaks in kilometres.
+    visibility_m = current.get("visibility")
+    try:
+        vis_km = round(float(visibility_m) / 1000, 1) if visibility_m is not None else None
+    except (TypeError, ValueError):
+        vis_km = None
+
     return {
         "location": {
             # Never fall back to the timezone name: India's zone is "Asia/Kolkata",
@@ -255,9 +339,12 @@ def fetch(lat: float, lon: float, name: str = "") -> dict:
             "wind_degree": current.get("wind_direction_10m"),
             "wind_dir": _compass(current.get("wind_direction_10m")),
             "precip_mm": current.get("precipitation", 0),
+            "pressure_mb": current.get("surface_pressure"),
+            "vis_km": vis_km,
             "uv": today_uv,
             "is_day": current.get("is_day", 1),
             "last_updated": current_time,
+            "air_quality": _fetch_air_quality(lat, lon),
         },
         "astro": {
             "sunrise": str(_at(daily.get("sunrise"), 0) or ""),

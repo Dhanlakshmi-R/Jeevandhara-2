@@ -13,6 +13,12 @@ class AppTextField extends StatefulWidget {
   final int maxLines;
   final bool enabled;
 
+  /// Hints for the platform credential manager / autofill service (Google
+  /// Password Manager on Android, Keychain on iOS). Pass a value such as
+  /// `AutofillHints.username` from inside an [AutofillGroup] so the OS offers to
+  /// fill and save it. No password is ever stored by the app itself.
+  final Iterable<String>? autofillHints;
+
   const AppTextField({
     super.key,
     required this.controller,
@@ -25,6 +31,7 @@ class AppTextField extends StatefulWidget {
     this.textInputAction = TextInputAction.next,
     this.maxLines = 1,
     this.enabled = true,
+    this.autofillHints,
   });
 
   @override
@@ -45,6 +52,7 @@ class _AppTextFieldState extends State<AppTextField> {
       validator: widget.validator,
       textInputAction: widget.textInputAction,
       maxLines: widget.maxLines,
+      autofillHints: widget.autofillHints,
       style: TextStyle(color: c.textPrimary, fontSize: 15),
       cursorColor: c.primary,
       decoration: InputDecoration(
@@ -92,6 +100,7 @@ class AppDropdownField extends StatelessWidget {
     return DropdownButtonFormField<String>(
       key: ValueKey<String?>('dropdown_$value'),
       initialValue: value,
+      isExpanded: true,
       hint: hint != null
           ? Text(
               hint!,

@@ -24,6 +24,18 @@ class ChatTurn(BaseModel):
     lon: float | None = Field(None, ge=-180, le=180)
     place_name: str = Field("", max_length=160)
     history: list[dict] = Field(default_factory=list, max_length=40)
+    language: str = Field("en", max_length=8)
+
+
+class QualityRequest(BaseModel):
+    filename: str = Field("", max_length=260)
+    crop_name: str = Field("", max_length=100)
+    language: str = Field("en", max_length=8)
+
+
+class TranslateRequest(BaseModel):
+    text: str = Field(..., min_length=1, max_length=4000)
+    language: str = Field("en", max_length=8)
 
 
 @router.post("/chat")
@@ -41,6 +53,8 @@ def chat(turn: ChatTurn) -> StreamingResponse:
             lat=turn.lat,
             lon=turn.lon,
             place_name=turn.place_name,
+            history=turn.history,
+            language=turn.language,
         ),
         media_type="text/event-stream",
         headers={
@@ -53,12 +67,25 @@ def chat(turn: ChatTurn) -> StreamingResponse:
     )
 
 
+@router.post("/quality")
+async def quality(req: QualityRequest) -> dict:
+    """Analyze a crop image (by filename) and return quality details."""
+    return await ai_chat.analyze_quality(req.filename, req.crop_name, req.language)
+
+
+@router.post("/translate")
+async def translate(req: TranslateRequest) -> dict:
+    """Translate text into the requested language using the LLM."""
+    translated = await ai_chat.translate_text(req.text, req.language)
+    return {"text": translated}
+
+
 @router.get("/capabilities")
 def capabilities() -> dict:
     """What the assistant can do, so the client can render its tool list."""
     return {
-        "provider": "rule-based",
-        "llm_configured": ai_chat.has_llm_key(),
+        "provider": "llm" if ai_chat.llm_available() else "rule-based",
+        "llm_configured": ai_chat.llm_available(),
         "gazetteer": ai_chat.gazetteer_available(),
         "tools": [
             {"name": "weather.get", "label": "Live weather", "needs_location": True},

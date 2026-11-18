@@ -87,6 +87,57 @@ class K {
   static const newConversation = 'newConversation';
   static const switchTheme = 'switchTheme';
   static const searchTools = 'searchTools';
+
+  // Market prices + provenance
+  static const searchCrops = 'searchCrops';
+  static const filterFreshness = 'filterFreshness';
+  static const all = 'all';
+  static const fresh = 'fresh';
+  static const stale = 'stale';
+  static const noMarketData = 'noMarketData';
+  static const noMarketDataHint = 'noMarketDataHint';
+  static const noCropsFound = 'noCropsFound';
+  static const noCropsFoundHint = 'noCropsFoundHint';
+  static const marketDataUnavailable = 'marketDataUnavailable';
+  static const tooOldToAct = 'tooOldToAct';
+  static const tooOldToActHint = 'tooOldToActHint';
+  static const staleWindowHint = 'staleWindowHint';
+  static const confirmWithMandi = 'confirmWithMandi';
+  static const daysOld = 'daysOld'; // {n} day(s) old
+  static const observedDaysAgo = 'observedDaysAgo'; // {d} ({n} day(s) ago)
+  static const observedToday = 'observedToday'; // {d} (today)
+  static const undatedObservation = 'undatedObservation';
+  static const priceNotReported = 'priceNotReported';
+  static const rangeSuffix = 'rangeSuffix'; // "range"
+  static const arrivalsLabel = 'arrivalsLabel'; // Arrivals: {n}
+  static const mandiNotReported = 'mandiNotReported';
+  static const liveMarketData = 'liveMarketData';
+  static const storedRatesOnly = 'storedRatesOnly';
+  static const feedCountOff = 'feedCountOff'; // {n} feed(s) off
+  static const serving = 'serving';
+  static const notServing = 'notServing';
+  static const dataSources = 'dataSources';
+  static const checkedAt = 'checkedAt'; // checked {t}
+  static const checkedJustNow = 'checkedJustNow';
+  static const ageUnknown = 'ageUnknown';
+  static const unverifiedFeed = 'unverifiedFeed';
+  static const tryAgainNow = 'tryAgainNow';
+  static const pricesUnavailableRightNow = 'pricesUnavailableRightNow';
+  static const noOffersYet = 'noOffersYet';
+  static const noOffersYetHint = 'noOffersYetHint';
+  static const noRowsForCrop = 'noRowsForCrop';
+  static const noQuotationsYet = 'noQuotationsYet';
+  static const oldestRateDays = 'oldestRateDays'; // {n} day(s) old
+  static const someRatesOld = 'someRatesOld';
+  static const feedNeverVerified = 'feedNeverVerified';
+  static const ageOfRatesUnknown = 'ageOfRatesUnknown';
+
+  // Provenance tiers (letter stays the same in both languages)
+  static const tierA = 'tierA';
+  static const tierB = 'tierB';
+  static const tierC = 'tierC';
+  static const tierD = 'tierD';
+  static const tierUnknown = 'tierUnknown';
 }
 
 class AppStrings {
@@ -145,6 +196,58 @@ class AppStrings {
     K.newConversation: 'New conversation',
     K.switchTheme: 'Switch theme',
     K.searchTools: 'Search tools',
+    K.searchCrops: 'Search crops',
+    K.filterFreshness: 'Filter by freshness',
+    K.all: 'All',
+    K.fresh: 'Fresh',
+    K.stale: 'Stale',
+    K.noMarketData: 'No market data',
+    K.noMarketDataHint:
+        'No rows are stored for this crop yet. Nothing is shown here until a source reports one.',
+    K.noCropsFound: 'No crops found',
+    K.noCropsFoundHint: 'Try a different search or filter.',
+    K.marketDataUnavailable: 'Market data unavailable',
+    K.tooOldToAct: 'Too old to act on',
+    K.tooOldToActHint:
+        'do not sell against this rate without confirming with the mandi.',
+    K.staleWindowHint:
+        'Rates older than a day may no longer be what buyers are paying. Confirm with the mandi before you sell.',
+    K.confirmWithMandi: 'Confirm with the mandi before you sell.',
+    K.daysOld: '{n} day(s) old',
+    K.observedDaysAgo: '{d} ({n} day(s) ago)',
+    K.observedToday: '{d} (today)',
+    K.undatedObservation: 'Undated observation',
+    K.priceNotReported: 'Price not reported',
+    K.rangeSuffix: 'range',
+    K.arrivalsLabel: 'Arrivals: {n}',
+    K.mandiNotReported: 'Mandi not reported',
+    K.liveMarketData: 'Live market data',
+    K.storedRatesOnly: 'Stored rates only - no fresh pull',
+    K.feedCountOff: '{n} feed(s) off',
+    K.serving: 'serving',
+    K.notServing: 'not serving',
+    K.dataSources: 'Data sources',
+    K.checkedAt: 'checked {t}',
+    K.checkedJustNow: 'checked just now',
+    K.ageUnknown: 'Age unknown',
+    K.unverifiedFeed: 'Unverified feed',
+    K.tryAgainNow: 'Try again',
+    K.pricesUnavailableRightNow:
+        'Market prices unavailable right now. Open Market Prices for the reason.',
+    K.noOffersYet: 'No offers yet',
+    K.noOffersYetHint: 'Offers from traders will appear here once they arrive.',
+    K.tierA: 'official statistics',
+    K.tierB: 'first-party',
+    K.tierC: 'third-party feed',
+    K.tierD: 'derived estimate',
+    K.tierUnknown: 'unknown provenance',
+    K.noRowsForCrop: 'No rows to show for the selected crop.',
+    K.noQuotationsYet:
+        'No mandi quotations stored yet. Nothing is shown until a source reports a price.',
+    K.oldestRateDays: 'Oldest rate is {n} day(s) old',
+    K.someRatesOld: 'Some rates are older than a day',
+    K.feedNeverVerified: 'A feed here has never been verified',
+    K.ageOfRatesUnknown: 'Age of these rates is unknown',
   };
 
   static const _kn = <String, String>{
@@ -202,6 +305,59 @@ class AppStrings {
     K.newConversation: 'ಹೊಸ ಸಂಭಾಷಣೆ',
     K.switchTheme: 'ಥೀಮ್ ಬದಲಾಯಿಸಿ',
     K.searchTools: 'ಸಲಕರಣೆಗಳನ್ನು ಹುಡುಕಿ',
+    K.searchCrops: 'ಬೆಳೆಗಳನ್ನು ಹುಡುಕಿ',
+    K.filterFreshness: 'ಹೊಸತನದ ಆಧಾರದ ಮೇಲೆ ಶೋಧಿಸಿ',
+    K.all: 'ಎಲ್ಲಾ',
+    K.fresh: 'ಹೊಸದು',
+    K.stale: 'ಹಳೆಯದು',
+    K.noMarketData: 'ಮಾರುಕಟ್ಟೆ ದತ್ತಾಂಶ ಇಲ್ಲ',
+    K.noMarketDataHint:
+        'ಈ ಬೆಳೆಗೆ ಇನ್ನೂ ಯಾವುದೇ ದಾಖಲೆ ಇಲ್ಲ. ಮೂಲ ಒಂದು ದರ ನೀಡುವವರೆಗೆ ಇಲ್ಲಿ ಏನೂ ತೋರಿಸಲಾಗುವುದಿಲ್ಲ.',
+    K.noCropsFound: 'ಬೆಳೆಗಳು ಸಿಗಲಿಲ್ಲ',
+    K.noCropsFoundHint: 'ಬೇರೆ ಹುಡುಕಾಟ ಅಥವಾ ಶೋಧ ಪ್ರಯತ್ನಿಸಿ.',
+    K.marketDataUnavailable: 'ಮಾರುಕಟ್ಟೆ ದತ್ತಾಂಶ ಲಭ್ಯವಿಲ್ಲ',
+    K.tooOldToAct: 'ಕ್ರಮ ತೆಗೆದುಕೊಳ್ಳಲು ತುಂಬಾ ಹಳೆಯದು',
+    K.tooOldToActHint:
+        'ಮಾರುಕಟ್ಟೆಯಲ್ಲಿ ದೃಢಪಡಿಸದೆ ಈ ದರದ ಆಧಾರದ ಮೇಲೆ ಮಾರಬೇಡಿ.',
+    K.staleWindowHint:
+        'ಒಂದು ದಿನಕ್ಕಿಂತ ಹಳೆಯ ದರಗಳು ಈಗ ಖರೀದಿದಾರರು ನೀಡುತ್ತಿರುವ ಬೆಲೆ ಆಗಿರದಿರಬಹುದು. ಮಾರುವ ಮೊದಲು ಮಾರುಕಟ್ಟೆಯಲ್ಲಿ ದೃಢಪಡಿಸಿ.',
+    K.confirmWithMandi: 'ಮಾರುವ ಮೊದಲು ಮಾರುಕಟ್ಟೆಯಲ್ಲಿ ದೃಢಪಡಿಸಿ.',
+    K.daysOld: '{n} ದಿನ(ಗಳು) ಹಳೆಯದು',
+    K.observedDaysAgo: '{d} ({n} ದಿನ(ಗಳ) ಹಿಂದೆ)',
+    K.observedToday: '{d} (ಇಂದು)',
+    K.undatedObservation: 'ದಿನಾಂಕ ಇಲ್ಲದ ದಾಖಲೆ',
+    K.priceNotReported: 'ದರ ವರದಿಯಾಗಿಲ್ಲ',
+    K.rangeSuffix: 'ವ್ಯಾಪ್ತಿ',
+    K.arrivalsLabel: 'ಆಗಮನ: {n}',
+    K.mandiNotReported: 'ಮಾರುಕಟ್ಟೆ ವರದಿಯಾಗಿಲ್ಲ',
+    K.liveMarketData: 'ಲೈವ್ ಮಾರುಕಟ್ಟೆ ದತ್ತಾಂಶ',
+    K.storedRatesOnly: 'ಸಂಗ್ರಹಿತ ದರಗಳು ಮಾತ್ರ - ಹೊಸ ದತ್ತಾಂಶ ಇಲ್ಲ',
+    K.feedCountOff: '{n} ಮೂಲ(ಗಳು) ಕೆಲಸ ಮಾಡುತ್ತಿಲ್ಲ',
+    K.serving: 'ಲಭ್ಯ',
+    K.notServing: 'ಲಭ್ಯವಿಲ್ಲ',
+    K.dataSources: 'ದತ್ತಾಂಶ ಮೂಲಗಳು',
+    K.checkedAt: 'ಪರಿಶೀಲಿಸಲಾಗಿದೆ {t}',
+    K.checkedJustNow: 'ಈಗಷ್ಟೇ ಪರಿಶೀಲಿಸಲಾಗಿದೆ',
+    K.ageUnknown: 'ವಯಸ್ಸು ಗೊತ್ತಿಲ್ಲ',
+    K.unverifiedFeed: 'ಪರಿಶೀಲನೆಯಾಗದ ಮೂಲ',
+    K.tryAgainNow: 'ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ',
+    K.pricesUnavailableRightNow:
+        'ಈಗ ಮಾರುಕಟ್ಟೆ ದರಗಳು ಲಭ್ಯವಿಲ್ಲ. ಕಾರಣಕ್ಕಾಗಿ ಮಾರುಕಟ್ಟೆ ದರಗಳನ್ನು ತೆರೆಯಿರಿ.',
+    K.noOffersYet: 'ಇನ್ನೂ ಕೊಡುಗೆಗಳಿಲ್ಲ',
+    K.noOffersYetHint:
+        'ವ್ಯಾಪಾರಿಗಳ ಕೊಡುಗೆಗಳು ಬಂದ ನಂತರ ಇಲ್ಲಿ ಕಾಣಿಸುತ್ತವೆ.',
+    K.tierA: 'ಅಧಿಕೃತ ಅಂಕಿಅಂಶ',
+    K.tierB: 'ಸ್ವಂತ ಮೂಲ',
+    K.tierC: 'ಮೂರನೇ ಪಕ್ಷದ ಮೂಲ',
+    K.tierD: 'ಲೆಕ್ಕಹಾಕಿದ ಅಂದಾಜು',
+    K.tierUnknown: 'ಗೊತ್ತಿಲ್ಲದ ಮೂಲ',
+    K.noRowsForCrop: 'ಆಯ್ಕೆ ಮಾಡಿದ ಬೆಳೆಗೆ ತೋರಿಸಲು ಯಾವುದೇ ದಾಖಲೆ ಇಲ್ಲ.',
+    K.noQuotationsYet:
+        'ಇನ್ನೂ ಯಾವುದೇ ಮಾರುಕಟ್ಟೆ ದರ ಸಂಗ್ರಹವಾಗಿಲ್ಲ. ಮೂಲ ಒಂದು ದರ ವರದಿ ಮಾಡುವವರೆಗೆ ಇಲ್ಲಿ ಏನೂ ತೋರಿಸಲಾಗುವುದಿಲ್ಲ.',
+    K.oldestRateDays: 'ಹಳೆಯ ದರ {n} ದಿನ(ಗಳು) ಹಳೆಯದು',
+    K.someRatesOld: 'ಕೆಲ ದರಗಳು ಒಂದು ದಿನಕ್ಕಿಂತ ಹಳೆಯದು',
+    K.feedNeverVerified: 'ಇಲ್ಲಿನ ಒಂದು ಮೂಲವು ಇದುವರೆಗೆ ಪರಿಶೀಲನೆಯಾಗಿಲ್ಲ',
+    K.ageOfRatesUnknown: 'ಈ ದರಗಳ ವಯಸ್ಸು ಗೊತ್ತಿಲ್ಲ',
   };
 
   /// Returns localized string. Falls back to English.
@@ -209,6 +365,10 @@ class AppStrings {
     final map = LanguageController.instance.isKannada ? _kn : _en;
     return map[key] ?? fallback ?? key;
   }
+
+  /// English lookup with no [BuildContext], for formatters that live outside
+  /// the widget tree (models). Falls back to the key itself.
+  static String enOf(String key) => _en[key] ?? key;
 }
 
 extension AppStringsX on BuildContext {

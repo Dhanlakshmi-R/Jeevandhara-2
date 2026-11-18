@@ -65,6 +65,14 @@ class _FakeSource:
         self.provides_arrivals = provides_arrivals
         self.fetch_calls = 0
         self.missing_key = None
+        self.config = {
+            "attribution": "test attribution",
+            "confidence": "low",
+            "verified": True,
+        }
+        self.confidence = "low"
+        self.verified = True
+        self.attribution = "test attribution"
 
     def fetch(self, **params):
         self.fetch_calls += 1
@@ -427,6 +435,38 @@ class TestMandiApiSource:
                 source.fetch(commodity="Onion")
         assert "MISSING_PARAM" in str(excinfo.value)
 
+    def test_no_rows_answer_is_not_counted_as_a_failure(self):
+        """A healthy feed that does not carry a crop must stay closed.
+
+        Charging it to the breaker is how one absent crop used to trip the
+        whole source open and turn every later crop into "unavailable".
+        """
+        source = MandiApiSource()
+        crops = ["Bajra", "Jowar", "Urad", "Moong", "Gram"]
+        assert len(crops) >= source.breaker.failure_threshold
+        with patch.object(source, "_request_json", return_value=json.loads(mandi_payload())):
+            with patch.object(source, "rate_limit_ok", return_value=True):
+                for crop in crops:
+                    with pytest.raises(SourceUnavailable) as excinfo:
+                        source.fetch(commodity=crop, state="Karnataka")
+                    assert excinfo.value.kind == "no_rows"
+
+        assert source.breaker.is_open is False
+        assert source.last_error is None
+        assert source.last_success_at is not None
+
+    def test_no_rows_is_remembered_for_the_cache_window(self):
+        """Repeating a crop nobody quotes must not spend another request."""
+        source = MandiApiSource()
+        with patch.object(source, "_request_json", return_value=json.loads(mandi_payload())) as request:
+            with pytest.raises(SourceUnavailable):
+                source.fetch(commodity="Bajra", state="Karnataka")
+            rows, meta = source.fetch(commodity="Bajra", state="Karnataka")
+
+        assert rows == []
+        assert meta["stale"] is False
+        assert request.call_count == 1
+
     def test_health_reports_failure_reason(self):
         """Health must explain itself; /market/status has nothing else to show."""
         source = MandiApiSource()
@@ -745,6 +785,47 @@ class TestRegistry:
     def test_unknown_source_name_raises(self):
         with pytest.raises(KeyError):
             registry.get_source("nope")
+
+    def test_a_feed_that_answers_nothing_gives_an_empty_result_not_an_outage(self):
+        """"Nobody quotes Bajra" is a result; "every feed is down" is a fault.
+
+        Both used to reach the caller as NoSourceAvailable, so a crop the
+        whole chain honestly reported as unquoted came back as a 503 the app
+        showed as "market data unavailable".
+        """
+        registry.reset_for_tests()
+        empty = _FakeSource("mandi_api", enabled=True)
+
+        def nothing(**params):
+            empty.fetch_calls += 1
+            raise SourceUnavailable("mandi_api", "no rows returned", kind="no_rows")
+
+        empty.fetch = nothing
+        by_name = {
+            "data_gov_in": _FakeSource("data_gov_in", enabled=False),
+            "enam": _FakeSource("enam", enabled=False),
+            "mandi_api": empty,
+        }
+        with patch.object(registry, "get_source", side_effect=by_name.__getitem__):
+            rows, meta = registry.fetch_prices(commodity="Bajra")
+
+        assert rows == []
+        assert meta["empty"] is True
+        assert meta["source"] == "mandi_api"
+        assert meta["verified"] is True, "an empty answer still carries its source"
+        assert meta["note"] == registry.NO_SOURCE_QUOTES_NOTE
+        assert {a["source"] for a in meta["attempts"]} == {"data_gov_in", "enam", "mandi_api"}
+
+    def test_a_chain_that_could_not_be_asked_is_still_an_outage(self):
+        """Skipped sources know nothing about the crop; they must not claim it."""
+        registry.reset_for_tests()
+        by_name = {
+            name: _FakeSource(name, enabled=False) for name in ("data_gov_in", "enam", "mandi_api")
+        }
+        with patch.object(registry, "get_source", side_effect=by_name.__getitem__):
+            with pytest.raises(NoSourceAvailable) as excinfo:
+                registry.fetch_prices(commodity="Bajra")
+        assert not any(a.get("kind") == "no_rows" for a in excinfo.value.attempts)
 
 
 class TestMarketStatus:

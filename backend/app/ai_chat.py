@@ -16,8 +16,14 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+
+try:
+    import httpx
+except Exception:  # pragma: no cover
+    httpx = None  # type: ignore
 import re
 from dataclasses import dataclass, field
+from datetime import date
 from typing import AsyncIterator
 
 from . import places, weather_service
@@ -73,7 +79,8 @@ WEATHER_WORDS = re.compile(
     re.IGNORECASE,
 )
 PRICE_WORDS = re.compile(
-    r"\b(price|rate|mandi|market|mandi|ದರ|ಮಾರುಕಟ್ಟೆ|ಕಿಲೋ|quintal)\w*",
+    r"\b(price|rate|mandi|market|mandi|quintal|"
+    r"ದರ|ಬೆಲೆ|ಮಾರುಕಟ್ಟೆ|ಕಿಲೋ)\w*",
     re.IGNORECASE,
 )
 GREETING_WORDS = re.compile(
@@ -102,7 +109,7 @@ MARKETPLACE_WORDS = re.compile(
     re.IGNORECASE,
 )
 HELP_WORDS = re.compile(
-    r"\b(help|what can you do|capabilities|how do|ಸಹಾಯ|ಏನು)\w*", re.IGNORECASE
+    r"\b(help|what can you do|capabilities|how do|ಸಹಾಯ)\w*", re.IGNORECASE
 )
 
 
@@ -281,30 +288,310 @@ def _capability_reply() -> Reply:
     )
 
 
-def _price_reply() -> Reply:
+def _price_reply(prompt: str, session_factory=None) -> Reply:
+    """Quote real numbers, or say plainly that there are none.
+
+    This used to be a canned paragraph promising that "the Market Prices tool
+    shows the latest rates" - which was false while that screen was hardcoded,
+    and is exactly the kind of lie this rewrite exists to remove.
+
+    The rules it follows, in order:
+
+    1. Only figures from stored observations are quoted, each with its mandi,
+       its market date and its age. Nothing is fetched at reply time, so a
+       chat turn never waits on a government endpoint.
+    2. No crop named -> ask. No rows stored -> say so, with why.
+    3. Any row older than a day is called out as old rather than presented as
+       today's rate.
+    """
+    crop = _crop_mentioned(prompt)
+    if not crop:
+        return Reply(
+            text=(
+                "Which crop? Tell me the crop and, if you can, your district or "
+                "mandi — for example *“onion rate in Kolar”*.\n\n"
+                "I will only quote a rate the backend actually holds, with the "
+                "mandi and the date it was observed."
+            ),
+            citations=[
+                Citation(label="Market prices", kind=KIND_PRICE, detail="Ask for a crop"),
+            ],
+            thinking=["Waiting for a crop"],
+        )
+
+    try:
+        db = (session_factory or _default_session_factory())()
+    except Exception:  # noqa: BLE001 - store unreachable, never invent a price
+        return _unavailable_price_reply(crop, "the price store did not open")
+    try:
+        rows = _stored_prices(db, crop, prompt)
+        demand = _stored_demand(db, crop)
+    except Exception as exc:  # noqa: BLE001
+        return _unavailable_price_reply(crop, f"{type(exc).__name__} while reading stored prices")
+    finally:
+        db.close()
+
+    if not rows:
+        return _no_price_reply(crop)
+
+    today = date.today()
+    lines = [f"Here is what I actually hold for **{crop}**:", ""]
+    for row in rows:
+        age_days = (today - row["trade_date"]).days
+        age = "today" if age_days <= 0 else f"{age_days} day(s) ago"
+        lines.append(
+            f"- **{row['market']}** ({row.get('district') or 'district unknown'}): "
+            f"₹{row['modal_price']:,.0f}/quintal "
+            f"(₹{row['min_price']:,.0f}–₹{row['max_price']:,.0f}) — observed {age}"
+        )
+
+    stale = [r for r in rows if (today - r["trade_date"]).days > 1]
+    lines.append("")
+    if stale:
+        lines.append(
+            f"**{len(stale)} of these {len(rows)} quotes are older than a day.** "
+            "Mandi rates move daily, so treat old ones as background, not as "
+            "something to sell against."
+        )
+    else:
+        lines.append(
+            "All of these were observed within the last day. Rates still differ "
+            "by mandi, so compare at least two before you decide."
+        )
+
+    if demand:
+        lines += [
+            "",
+            f"Demand signal for {crop} at **{demand['mandi']}**: "
+            f"**{demand['band_en']}** ({demand['score']:.0f}/100, "
+            f"{demand['confidence']} confidence, {demand['component_count']}/"
+            f"{demand['components_total']} inputs). This is a derived estimate, "
+            "not a measurement — open the demand breakdown to see what fed it.",
+        ]
+    else:
+        lines += [
+            "",
+            "I do not have a demand reading for this crop yet — too few inputs "
+            "have been computed to show one honestly.",
+        ]
+
+    lines += ["", "Ask for another crop or mandi, or open **Market prices** for the full table."]
+
+    source_label = rows[0].get("source_name") or "market feed"
+    return Reply(
+        text="\n".join(lines),
+        citations=[
+            Citation(label=f"{crop} prices", kind=KIND_PRICE, detail=source_label),
+            Citation(label="Derived demand estimate", kind=KIND_SOURCE, detail="Computed in-app"),
+        ],
+        tools=[
+            ToolCall(
+                tool="prices.lookup",
+                title=f"{crop} — modal prices",
+                payload={
+                    "commodity": crop,
+                    "rows": [
+                        {
+                            "market": row["market"],
+                            "district": row.get("district"),
+                            "trade_date": row["trade_date"].isoformat(),
+                            "modal_price": row["modal_price"],
+                            "min_price": row.get("min_price"),
+                            "max_price": row.get("max_price"),
+                            "source": row.get("source_name"),
+                            "age_days": (today - row["trade_date"]).days,
+                        }
+                        for row in rows
+                    ],
+                    "demand": demand,
+                },
+            )
+        ],
+        thinking=[f"Reading stored {crop} observations", "Checking their age"],
+    )
+
+
+def _default_session_factory():
+    """Lazily resolved so tests can inject their own session factory.
+
+    Importing `database` at module load would bind the chat to whatever
+    `DATABASE_URL` was set when the process started, which is the wrong
+    database the moment a test or a migration tool rebinds it.
+    """
+    from .database import SessionLocal
+
+    return SessionLocal()
+
+
+def _unavailable_price_reply(crop: str, why: str) -> Reply:
+    """The store itself could not answer. Say so; never fall back to a number."""
     return Reply(
         text=(
-            "I can talk through prices, but be aware of how the numbers here "
-            "work:\n\n"
-            "- The **Market Prices** tool shows the latest rates and trend for "
-            "each crop, with a sparkline so you can see the direction.\n"
-            "- Mandi rates move daily and differ by mandi, so treat a single "
-            "figure as a starting point, not a guarantee.\n"
-            "- Before you sell, compare at least two nearby mandis and check "
-            "whether the trend is up or down that week.\n\n"
-            "Tell me the crop and quantity and I will help you work out a "
-            "target price. Opening the Market Prices tool will show you the "
-            "live table."
+            f"I cannot read the price store for **{crop}** right now "
+            f"({why}), so I will not quote a rate.\n\n"
+            "This is a problem with reading our own data, not with the market "
+            "feed — nothing here is being invented to fill the gap."
         ),
         citations=[
             Citation(
-                label="Market Prices",
+                label="Price store unavailable",
                 kind=KIND_PRICE,
-                detail="Rates and trend per crop",
+                detail=why,
             )
         ],
-        thinking=["Loading the price feature map"],
+        thinking=["Price store did not answer"],
     )
+
+
+def _no_price_reply(crop: str) -> Reply:
+    """No stored rows: say which feed is responsible, not just 'no data'."""
+    reasons = []
+    try:
+        from .market import service as market_service
+
+        for source in market_service.market_status().get("sources", []):
+            if not source.get("enabled"):
+                reasons.append(f"{source['name']}: {source.get('disabled_reason') or 'off'}")
+            elif not source.get("verified"):
+                reasons.append(f"{source['name']}: not verified against the live catalogue")
+    except Exception:  # noqa: BLE001 - status is context, never the failure itself
+        reasons = []
+
+    detail = (
+        " Right now: " + "; ".join(reasons) + "." if reasons else ""
+    )
+    return Reply(
+        text=(
+            f"I do not have a price for **{crop}** right now, so I am not going "
+            f"to guess one.{detail}\n\n"
+            "Once a feed answers and the sync runs, the rate appears here with "
+            "its mandi and observation date. You can also post what buyers are "
+            "offering under **Market prices → Report an inquiry**, which is a "
+            "number this app owns rather than scrapes."
+        ),
+        citations=[
+            Citation(
+                label="No observation available",
+                kind=KIND_PRICE,
+                detail="Nothing stored for this crop",
+            )
+        ],
+        thinking=["No stored observations", "Checking which feed is down"],
+    )
+
+
+def _stored_prices(db, crop: str, prompt: str, limit: int = 5) -> list[dict]:
+    """Newest observation per mandi, scoped to a mandi the prompt named.
+
+    Reads the database only. A reply must be answerable with the source down,
+    and it must never be the reason a government endpoint gets called.
+    """
+    from . import models
+
+    latest: dict[str, models.MarketPrice] = {}
+    for row in (
+        db.query(models.MarketPrice)
+        .filter(models.MarketPrice.commodity == crop)
+        .all()
+    ):
+        current = latest.get(row.market)
+        if current is None or row.trade_date > current.trade_date:
+            latest[row.market] = row
+
+    rows = sorted(
+        (r for r in latest.values() if r.modal_price is not None),
+        key=lambda r: r.trade_date,
+        reverse=True,
+    )
+
+    # Narrow to a mandi the user actually named, but only if one of ours was
+    # named - a typo'd mandi must not silently widen back to everything.
+    named = _market_mentioned(prompt, [r.market for r in rows])
+    if named:
+        rows = [r for r in rows if r.market == named]
+
+    # Sort freshest-first so the top of the list is the newest observation.
+    # Rows are NOT dropped for being old: an out-of-date rate the user is told
+    # about is honest, the same rate silently discarded is not.
+    rows.sort(key=lambda r: r.trade_date, reverse=True)
+
+    return [
+        {
+            "market": r.market,
+            "district": r.district,
+            "trade_date": r.trade_date,
+            "modal_price": r.modal_price,
+            "min_price": r.min_price or r.modal_price,
+            "max_price": r.max_price or r.modal_price,
+            "source_name": r.source_name,
+        }
+        for r in rows[:limit]
+    ]
+
+
+def _market_mentioned(prompt: str, markets: list[str]) -> str | None:
+    text = prompt.casefold()
+    for market in sorted(markets, key=len, reverse=True):
+        if market and market.casefold() in text:
+            return market
+    return None
+
+
+def _stored_demand(db, crop: str) -> dict | None:
+    """The newest derived reading for this crop, if one exists."""
+    from . import models
+
+    row = (
+        db.query(models.MandiDemand)
+        .filter(models.MandiDemand.commodity == crop, models.MandiDemand.score.isnot(None))
+        .order_by(models.MandiDemand.created_at.desc())
+        .first()
+    )
+    if row is None:
+        return None
+    labels = {
+        "strong": "Strong demand",
+        "moderate": "Moderate demand",
+        "weak": "Weak demand",
+    }
+    return {
+        "mandi": row.mandi,
+        "band": row.band,
+        "band_en": labels.get(row.band, row.band),
+        "score": row.score,
+        "confidence": row.confidence,
+        "component_count": row.component_count,
+        "components_total": len(row.components) or row.component_count,
+        "is_derived": True,
+        "computed_for": row.computed_for.isoformat(),
+    }
+
+
+def _crop_mentioned(prompt: str) -> str | None:
+    """Canonical crop named in the prompt, or None.
+
+    Matching is over the alias table so "pyaz", "onions" and "ಈರುಳ್ಳಿ" all
+    resolve to Onion - the same normalisation the price feed gets, so the
+    answer cannot disagree with the screen.
+    """
+    from .market.normalizer import _ALIAS_INDEX, _clean
+
+    cleaned = _clean(prompt)
+    if not cleaned:
+        return None
+
+    hits = {
+        canonical
+        for alias, canonical in _ALIAS_INDEX.items()
+        # Not `\b`: aliases ending in a combining mark (Kannada vowel signs)
+        # are not word characters, so `\b` never fires there.
+        if alias and re.search(rf"(?<!\w){re.escape(alias)}(?!\w)", cleaned)
+    }
+    if not hits:
+        return None
+    # "tomato rate" is one crop; "onion and potato" is ambiguous, so pick the
+    # longest alias to prefer a multi-word match over a fragment of it.
+    return sorted(hits, key=len, reverse=True)[0]
 
 
 def _route_reply(topic: str, tool_name: str, prompt: str) -> Reply:
@@ -351,8 +638,14 @@ def compose_reply(
     lat: float | None = None,
     lon: float | None = None,
     place_name: str = "",
+    session_factory=None,
 ) -> Reply:
-    """Pick an intent and build the reply. Pure and unit-testable."""
+    """Pick an intent and build the reply. Unit-testable.
+
+    `session_factory` is only used by the price intent, and only to *read*
+    what is already stored; pass one in tests to point the reply at a
+    fixture database.
+    """
     text = prompt.strip()
     if not text:
         return Reply(
@@ -388,7 +681,7 @@ def compose_reply(
     if TRADER_WORDS.search(text):
         return _trader_reply()
     if PRICE_WORDS.search(text):
-        return _price_reply()
+        return _price_reply(text, session_factory)
     if RENTAL_WORDS.search(text):
         return _route_reply("Tool rental", "Tool Rental", prompt)
     if QUALITY_WORDS.search(text):
@@ -430,13 +723,16 @@ async def stream_reply(
     lat: float | None = None,
     lon: float | None = None,
     place_name: str = "",
+    session_factory=None,
+    history: list[dict] | None = None,
+    language: str = "en",
 ) -> AsyncIterator[str]:
     """Yield the reply as SSE frames.
 
     Kept as a generator so the router can hand it straight to
     `StreamingResponse` without buffering the whole answer.
     """
-    reply = compose_reply(prompt, lat, lon, place_name)
+    reply = compose_reply(prompt, lat, lon, place_name, session_factory)
 
     for line in reply.thinking:
         await asyncio.sleep(STATUS_DELAY / max(len(reply.thinking), 1))
@@ -448,6 +744,28 @@ async def stream_reply(
     for citation in reply.citations:
         yield _sse("citation", citation.as_event())
 
+    if llm_available() and httpx is not None:
+        messages = _build_llm_messages(prompt, reply, lat, lon, place_name, history, language)
+        try:
+            streamed = False
+            async for token in _stream_llm(messages):
+                streamed = True
+                yield _sse("delta", {"text": token})
+            if not streamed:
+                for chunk in reply.text.split(" "):
+                    await asyncio.sleep(CHUNK_DELAY)
+                    yield _sse("delta", {"text": chunk + " "})
+        except Exception as exc:  # noqa: BLE001
+            text = (
+                "\n[Assistant unavailable: " + type(exc).__name__
+                + ". Showing the built-in answer instead.]\n\n" + reply.text
+            )
+            for chunk in text.split(" "):
+                await asyncio.sleep(CHUNK_DELAY)
+                yield _sse("delta", {"text": chunk + " "})
+        yield _sse("done", {"provider": "llm", "model": _llm_model()})
+        return
+
     # Split on whitespace but keep it, so the client can reassemble exactly.
     for chunk in reply.text.split(" "):
         await asyncio.sleep(CHUNK_DELAY)
@@ -458,6 +776,188 @@ async def stream_reply(
 
 def has_llm_key() -> bool:
     return bool(os.getenv("LLM_API_KEY", "").strip())
+
+
+def _llm_base_url() -> str:
+    url = os.getenv("LLM_BASE_URL", "").strip()
+    if url:
+        return url.rstrip("/")
+    if has_llm_key():
+        return "https://api.openai.com/v1"
+    return ""
+
+
+def llm_available() -> bool:
+    """Whether an OpenAI-compatible chat endpoint can be reached."""
+    return bool(_llm_base_url())
+
+
+def _llm_model() -> str:
+    return os.getenv("LLM_MODEL", "").strip() or "openai-fast"
+
+
+def _llm_timeout() -> float:
+    try:
+        return float(os.getenv("LLM_TIMEOUT", "60"))
+    except ValueError:
+        return 60.0
+
+
+async def translate_text(text: str, language: str = "en") -> str:
+    """Translate text to the target language using the LLM, if available."""
+    if not llm_available() or httpx is None:
+        return text
+    lang_name = {"en": "English", "kn": "Kannada", "hi": "Hindi"}.get(language, "English")
+    if lang_name == "English":
+        return text
+    messages = [
+        {
+            "role": "system",
+            "content": (
+                "You are a translator. Translate the user's text into "
+                + lang_name
+                + ". Return only the translated text, with no explanation, no quotes, "
+                "and no extra whitespace."
+            ),
+        },
+        {"role": "user", "content": text},
+    ]
+    try:
+        out = []
+        async for token in _stream_llm(messages):
+            out.append(token)
+        result = "".join(out).strip()
+        return result or text
+    except Exception:  # noqa: BLE001
+        return text
+
+
+async def _stream_llm(messages: list[dict]) -> AsyncIterator[str]:
+    """Stream tokens from an OpenAI-compatible /chat/completions endpoint."""
+    base = _llm_base_url()
+    if not base:
+        return
+    url = base + "/chat/completions"
+    headers = {"Content-Type": "application/json"}
+    key = os.getenv("LLM_API_KEY", "").strip()
+    if key:
+        headers["Authorization"] = f"Bearer {key}"
+
+    payload = {
+        "model": _llm_model(),
+        "messages": messages,
+        "stream": True,
+        "temperature": 0.7,
+    }
+
+    async with httpx.AsyncClient(timeout=_llm_timeout()) as client:
+        async with client.stream("POST", url, json=payload, headers=headers) as response:
+            response.raise_for_status()
+            async for line in response.aiter_lines():
+                line = line.strip()
+                if not line or not line.startswith("data:"):
+                    continue
+                data = line[len("data:"):].strip()
+                if data == "[DONE]":
+                    break
+                try:
+                    obj = json.loads(data)
+                except json.JSONDecodeError:
+                    continue
+                choices = obj.get("choices") or []
+                if not choices:
+                    continue
+                delta = (choices[0].get("delta") or {})
+                content = delta.get("content")
+                if content:
+                    yield content
+
+
+def _build_llm_messages(
+    prompt: str,
+    reply: "Reply",
+    lat: float | None,
+    lon: float | None,
+    place_name: str,
+    history: list[dict] | None = None,
+    language: str = "en",
+) -> list[dict]:
+    lang_name = {"en": "English", "kn": "Kannada", "hi": "Hindi"}.get(language, "English")
+    system = (
+        "You are Jeevandhara, a helpful assistant for Indian farmers and traders. "
+        "Answer clearly and practically. When context data is provided, ground "
+        "your answer in it and do not invent numbers. You may use markdown. "
+        "Respond only in " + lang_name + "."
+    )
+    context_parts = []
+    if place_name or (lat is not None and lon is not None):
+        context_parts.append(
+            f"Location context: place={place_name!r}, lat={lat}, lon={lon}."
+        )
+    if reply.text:
+        context_parts.append("Backend context (use these facts, do not contradict):\n" + reply.text)
+    messages: list[dict] = [{"role": "system", "content": system}]
+    if context_parts:
+        messages.append({"role": "system", "content": "\n\n".join(context_parts)})
+    for item in (history or []):
+        role = item.get("role")
+        content = item.get("content") or item.get("text")
+        if role in ("user", "assistant") and content:
+            messages.append({"role": role, "content": str(content)})
+    messages.append({"role": "user", "content": prompt})
+    return messages
+
+
+async def analyze_quality(
+    filename: str = "",
+    crop_name: str = "",
+    language: str = "en",
+) -> dict:
+    """Analyze a crop image (by filename/hint) and return a structured result."""
+    lang_name = {"en": "English", "kn": "Kannada", "hi": "Hindi"}.get(language, "English")
+    hint = crop_name.strip() or filename.strip() or "unknown crop"
+    messages = [
+        {
+            "role": "system",
+            "content": (
+                "You are an agricultural quality analyst. Given a crop file name or "
+                "crop name, provide a JSON object with keys: crop_name, "
+                "quality_grade, health_score (integer 0-100), disease_risk "
+                "(Low/Medium/High), uses (string), harmful (string explaining "
+                "whether it is harmful and why), notes (string). Output ONLY valid "
+                "JSON, no markdown. Respond in " + lang_name + "."
+            ),
+        },
+        {"role": "user", "content": f"File: {filename}\nCrop hint: {hint}"},
+    ]
+
+    if llm_available() and httpx is not None:
+        try:
+            out = []
+            async for token in _stream_llm(messages):
+                out.append(token)
+            raw = "".join(out).strip()
+            # Strip markdown code fences if present.
+            if raw.startswith("```"):
+                raw = raw.strip("`")
+                if raw.lower().startswith("json"):
+                    raw = raw[4:].strip()
+            data = json.loads(raw)
+            if isinstance(data, dict):
+                return data
+        except Exception:  # noqa: BLE001
+            pass
+
+    # Fallback when no LLM is available.
+    return {
+        "crop_name": hint,
+        "quality_grade": "Grade B",
+        "health_score": 75,
+        "disease_risk": "Medium",
+        "uses": "General consumption and cooking.",
+        "harmful": "No specific harmful effects known; wash before use.",
+        "notes": "LLM unavailable; result is a placeholder.",
+    }
 
 
 def gazetteer_available() -> bool:

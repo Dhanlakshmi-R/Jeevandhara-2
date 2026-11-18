@@ -248,6 +248,74 @@ def test_compass_points(degrees, expected):
     assert open_meteo._compass(degrees) == expected
 
 
+@pytest.mark.parametrize(
+    "aqi,expected",
+    [
+        (0, 1),
+        (50, 1),
+        (51, 2),
+        (100, 2),
+        (151, 4),
+        (250, 5),
+        (500, 6),
+        (None, None),
+        ("nonsense", None),
+    ],
+)
+def test_epa_index_from_aqi_buckets(aqi, expected):
+    assert open_meteo.epa_index_from_aqi(aqi) == expected
+
+
+def test_visibility_is_reported_in_kilometres(monkeypatch):
+    monkeypatch.setattr(
+        open_meteo,
+        "_get_json",
+        lambda base, path, params: {
+            "current": {"time": "2026-09-30T14:15", "visibility": 8500.0},
+            "hourly": {"time": []},
+            "daily": {"time": []},
+        },
+    )
+    data = open_meteo.fetch(12.97, 77.59)
+    assert data["current"]["vis_km"] == 8.5
+    # No AQI host in the stub payload -> honestly absent, never fabricated.
+    assert data["current"]["air_quality"] is None
+
+
+def test_air_quality_is_fetched_and_categorized(monkeypatch):
+    def fake(base, path, params):
+        if path == "air-quality":
+            return {"current": {"us_aqi": 137, "pm2_5": 48.2, "pm10": 70.0}}
+        return {
+            "current": {"time": "2026-09-30T14:15"},
+            "hourly": {"time": []},
+            "daily": {"time": []},
+        }
+
+    monkeypatch.setattr(open_meteo, "_get_json", fake)
+    data = open_meteo.fetch(12.97, 77.59)
+    aq = data["current"]["air_quality"]
+    assert aq["aqi"] == 137
+    assert aq["us_epa_index"] == 3
+    assert aq["category"] == "Unhealthy for sensitive groups"
+    assert aq["pm2_5"] == 48.2
+
+
+def test_air_quality_failure_leaves_reading_absent(monkeypatch):
+    def fake(base, path, params):
+        if path == "air-quality":
+            raise RuntimeError("air quality host down")
+        return {
+            "current": {"time": "2026-09-30T14:15"},
+            "hourly": {"time": []},
+            "daily": {"time": []},
+        }
+
+    monkeypatch.setattr(open_meteo, "_get_json", fake)
+    data = open_meteo.fetch(12.97, 77.59)
+    assert data["current"]["air_quality"] is None
+
+
 def test_short_or_null_arrays_are_tolerated(monkeypatch):
     monkeypatch.setattr(
         open_meteo,

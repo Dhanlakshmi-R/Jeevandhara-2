@@ -48,7 +48,7 @@ class AppPrimaryButton extends StatelessWidget {
             onTap: loading ? null : onPressed,
             child: Center(
               child: loading
-                  ? SizedBox(
+                  ? const SizedBox(
                       height: 22,
                       width: 22,
                       child: CircularProgressIndicator(

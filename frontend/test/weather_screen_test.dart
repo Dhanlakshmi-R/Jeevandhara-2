@@ -5,7 +5,9 @@ import 'package:http/testing.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:jeevandhara2/screens/weather_screen.dart';
+import 'package:jeevandhara2/services/current_location.dart';
 import 'package:jeevandhara2/services/weather_service.dart';
+import 'package:jeevandhara2/services/weather_speaker.dart';
 
 const _weatherJson = '''
 {
@@ -13,6 +15,8 @@ const _weatherJson = '''
   "current": {
     "temp_c": 27.4, "feelslike_c": 29.1, "humidity": 58, "wind_kph": 12.6,
     "wind_dir": "WSW", "precip_mm": 1.2, "uv": 6.1, "is_day": 1,
+    "pressure_mb": 1010.0, "vis_km": 6.5,
+    "air_quality": {"us_epa_index": 2, "category": "Moderate", "pm2_5": 21.0},
     "condition": {"text": "Partly cloudy", "icon": ""},
     "last_updated": "2026-09-24 09:00"
   },
@@ -31,8 +35,26 @@ const _weatherJson = '''
 }
 ''';
 
+/// A location service that always fails, so the widget test never touches the
+/// geolocator plugin.
+class _FakeLocation extends CurrentLocationService {
+  const _FakeLocation();
+
+  @override
+  Future<LocationResult> resolve() async =>
+      const LocationResult(LocationOutcome.denied);
+}
+
 Widget _app(WeatherService service) {
-  return MaterialApp(home: Scaffold(body: WeatherScreen(service: service)));
+  return MaterialApp(
+    home: Scaffold(
+      body: WeatherScreen(
+        service: service,
+        locationService: const _FakeLocation(),
+        speaker: const SilentWeatherSpeaker(),
+      ),
+    ),
+  );
 }
 
 void main() {
@@ -45,8 +67,7 @@ void main() {
     });
   });
 
-  testWidgets(
-      'loads persisted place and renders hero, metrics and recommendations',
+  testWidgets('loads persisted place and renders hero, hourly and weekly',
       (WidgetTester tester) async {
     // Tall viewport so the whole (mock-fed) dashboard is built for assertions.
     tester.view.physicalSize = const Size(800, 2600);
@@ -67,15 +88,14 @@ void main() {
 
     expect(find.textContaining('Dharwad'), findsWidgets);
     expect(find.textContaining('27\u00B0'), findsWidgets);
-    expect(find.text('Hourly forecast'), findsOneWidget);
-    expect(find.text('Daily forecast'), findsOneWidget);
-    expect(find.text('Farmer recommendations'), findsOneWidget);
-
-    // 65% rain chance must surface a caution recommendation.
-    expect(find.text('Chance of rain'), findsOneWidget);
+    expect(find.text("Today's hourly forecast"), findsOneWidget);
+    expect(find.text('Seven-day forecast'), findsOneWidget);
+    expect(find.text('FARMING TIP'), findsOneWidget);
+    // 65% rain chance must surface the rain-related farming guidance.
+    expect(find.textContaining('cover harvested produce'), findsOneWidget);
   });
 
-  testWidgets('shows empty state when no place is persisted',
+  testWidgets('shows empty state when no place is persisted and GPS denied',
       (WidgetTester tester) async {
     SharedPreferences.setMockInitialValues({});
     final client = MockClient((request) async => http.Response('{}', 503));
@@ -86,5 +106,6 @@ void main() {
 
     expect(find.text('No location yet'), findsOneWidget);
     expect(find.text('Choose a location'), findsOneWidget);
+    expect(find.text('Use my location'), findsOneWidget);
   });
 }

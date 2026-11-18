@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:jeevandhara2/models/crop.dart';
+import 'package:jeevandhara2/services/crops_service.dart';
 import 'package:jeevandhara2/theme/colors.dart';
 import 'package:jeevandhara2/widgets/layout.dart';
 import 'package:jeevandhara2/widgets/ui/app_input.dart';
@@ -7,15 +8,25 @@ import 'package:jeevandhara2/widgets/ui/buttons.dart';
 import 'package:jeevandhara2/widgets/ui/cards.dart';
 
 class SellCropScreen extends StatefulWidget {
+  /// Called with the row the server created. The screen also pops with that
+  /// row as its result, so a caller can use whichever fits.
+  /// When set, the screen edits this existing listing instead of creating one.
+  final CropListing? crop;
+
   final ValueChanged<CropListing>? onPosted;
 
-  const SellCropScreen({super.key, this.onPosted});
+  /// Injectable for tests; a real run uses the default HTTP client.
+  final CropsService? service;
+
+  const SellCropScreen({super.key, this.crop, this.onPosted, this.service});
 
   @override
   State<SellCropScreen> createState() => _SellCropScreenState();
 }
 
 class _SellCropScreenState extends State<SellCropScreen> {
+  late final CropsService _service = widget.service ?? CropsService();
+
   final _formKey = GlobalKey<FormState>();
   final _cropController = TextEditingController();
   final _quantityController = TextEditingController();
@@ -31,7 +42,19 @@ class _SellCropScreenState extends State<SellCropScreen> {
     'Groundnut',
     'Potato',
     'Maize',
-    'Chilli'
+    'Chilli',
+    'Rice',
+    'Sugarcane',
+    'Soybean',
+    'Bajra',
+    'Jowar',
+    'Mustard',
+    'Sunflower',
+    'Cabbage',
+    'Cauliflower',
+    'Brinjal',
+    'Okra',
+    'Cucumber',
   ];
   static const _units = ['kg', 'quintal', 'ton'];
   static const _harvestDates = [
@@ -46,7 +69,14 @@ class _SellCropScreenState extends State<SellCropScreen> {
   String? _crop;
   String _unit = 'kg';
   String _harvest = 'Available now';
+
+  /// The date behind [_harvest]. "Available now" carries no date, because the
+  /// server only stores an actual day and we would otherwise be inventing one.
+  DateTime? _harvestDate;
+
   bool _validateOnTap = false;
+  bool _posting = false;
+  String? _error;
 
   static const _emojiFor = {
     'Tomato': '\uD83C\uDF45',
@@ -57,6 +87,18 @@ class _SellCropScreenState extends State<SellCropScreen> {
     'Potato': '\uD83E\uDD54',
     'Maize': '\uD83C\uDF3D',
     'Chilli': '\uD83C\uDF36\uFE0F',
+    'Rice': '\uD83C\uDF3E',
+    'Sugarcane': '\uD83C\uDF3F',
+    'Soybean': '\uD83C\uDF31',
+    'Bajra': '\uD83C\uDF3D',
+    'Jowar': '\uD83C\uDF3D',
+    'Mustard': '\uD83C\uDF3C',
+    'Sunflower': '\uD83C\uDF3B',
+    'Cabbage': '\uD83E\uDD6C',
+    'Cauliflower': '\uD83E\uDD6C',
+    'Brinjal': '\uD83C\uDF46',
+    'Okra': '\uD83E\uDD52',
+    'Cucumber': '\uD83E\uDD52',
   };
 
   @override
@@ -69,6 +111,35 @@ class _SellCropScreenState extends State<SellCropScreen> {
     super.dispose();
   }
 
+  @override
+  void initState() {
+    super.initState();
+    final c = widget.crop;
+    if (c != null) {
+      _quantityController.text = c.quantity == c.quantity.roundToDouble()
+          ? c.quantity.toInt().toString()
+          : c.quantity.toString();
+      _unit = c.unit;
+      _priceController.text = c.expectedPrice == null
+          ? ''
+          : (c.expectedPrice! == c.expectedPrice!.roundToDouble()
+              ? c.expectedPrice!.toInt().toString()
+              : c.expectedPrice!.toString());
+      _locationController.text = c.location ?? '';
+      _descriptionController.text = c.description ?? '';
+      if (_crops.contains(c.name)) {
+        _crop = c.name;
+      } else {
+        _cropController.text = c.name;
+      }
+      if (c.harvestDate != null) {
+        _harvestDate = c.harvestDate;
+        _harvest =
+            '${c.harvestDate!.day} ${_monthName(c.harvestDate!.month)} ${c.harvestDate!.year}';
+      }
+    }
+  }
+
   Future<void> _pickHarvestDate() async {
     final date = await showDatePicker(
       context: context,
@@ -79,6 +150,7 @@ class _SellCropScreenState extends State<SellCropScreen> {
     );
     if (date != null) {
       setState(() {
+        _harvestDate = date;
         _harvest = '${date.day} ${_monthName(date.month)} ${date.year}';
       });
     }
@@ -102,7 +174,22 @@ class _SellCropScreenState extends State<SellCropScreen> {
     return names[m - 1];
   }
 
-  void _postCrop() {
+  /// The date a quick-pick harvest chip stands for.
+  ///
+  /// "Available now" is deliberately `null`: it describes readiness, not a
+  /// harvest day, and the server would otherwise receive a date nobody stated.
+  DateTime? _dateForChip(String chip) {
+    final now = DateTime.now();
+    return switch (chip) {
+      'In 7 days' => now.add(const Duration(days: 7)),
+      'In 2 weeks' => now.add(const Duration(days: 14)),
+      'In 1 month' => now.add(const Duration(days: 30)),
+      'In 2 months' => now.add(const Duration(days: 60)),
+      _ => null,
+    };
+  }
+
+  Future<void> _postCrop() async {
     setState(() => _validateOnTap = true);
     if (!_formKey.currentState!.validate()) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -110,23 +197,71 @@ class _SellCropScreenState extends State<SellCropScreen> {
       );
       return;
     }
-    final listing = CropListing(
-      name: _crop ?? _cropController.text.trim(),
-      emoji: _emojiFor[_crop] ?? '\uD83C\uDF3F',
-      quantity: '${_quantityController.text.trim()} $_unit',
-      expectedPrice: '\u20B9${_priceController.text.trim()}/$_unit',
-      location: _locationController.text.trim().isEmpty
-          ? 'Dharwad'
-          : _locationController.text.trim(),
-      listedAgo: 'Just now',
-      status: 'Active',
-    );
-    widget.onPosted?.call(listing);
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-          content: Text('Crop posted! Traders can now see your listing.')),
-    );
-    Navigator.of(context).pop();
+
+    final quantity = double.tryParse(_quantityController.text.trim());
+    if (quantity == null || quantity <= 0) {
+      setState(() => _error = 'Enter a quantity greater than 0.');
+      return;
+    }
+
+    final priceText = _priceController.text.trim();
+    final price = priceText.isEmpty ? null : double.tryParse(priceText);
+    if (priceText.isNotEmpty && (price == null || price <= 0)) {
+      setState(
+          () => _error = 'Enter a price greater than 0, or leave it blank.');
+      return;
+    }
+
+    final name = _crop ?? _cropController.text.trim();
+    setState(() {
+      _posting = true;
+      _error = null;
+    });
+
+    try {
+      final CropListing result;
+      if (widget.crop != null) {
+        result = await _service.update(
+          widget.crop!.id,
+          name: name,
+          quantity: quantity,
+          unit: _unit,
+          expectedPrice: price,
+          location: _locationController.text.trim(),
+          description: _descriptionController.text.trim(),
+          harvestDate: _harvestDate,
+        );
+      } else {
+        result = await _service.create(
+          name: name,
+          quantity: quantity,
+          unit: _unit,
+          expectedPrice: price,
+          location: _locationController.text.trim(),
+          description: _descriptionController.text.trim(),
+          harvestDate: _harvestDate,
+          emoji: _emojiFor[_crop] ?? '\uD83C\uDF3F',
+        );
+      }
+      if (!mounted) return;
+      widget.onPosted?.call(result);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            widget.crop != null
+                ? '${result.name} updated.'
+                : '${result.name} is listed. Traders can now see your crop.',
+          ),
+        ),
+      );
+      Navigator.of(context).pop(result);
+    } on Exception catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _posting = false;
+        _error = e.toString();
+      });
+    }
   }
 
   String? _required(String? v) =>
@@ -137,7 +272,7 @@ class _SellCropScreenState extends State<SellCropScreen> {
     final c = context.colors;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Sell My Crop'),
+        title: Text(widget.crop == null ? 'Sell My Crop' : 'Edit Crop'),
         actions: const [
           Padding(padding: EdgeInsets.only(right: 12), child: ThemeToggle())
         ],
@@ -209,9 +344,8 @@ class _SellCropScreenState extends State<SellCropScreen> {
               controller: _priceController,
               label: 'Expected price',
               icon: Icons.currency_rupee,
-              hint: 'per unit',
+              hint: 'per unit (optional)',
               keyboardType: TextInputType.number,
-              validator: _validateOnTap ? _required : null,
             ),
             const SizedBox(height: 16),
             AppTextField(
@@ -262,7 +396,10 @@ class _SellCropScreenState extends State<SellCropScreen> {
               children: _harvestDates
                   .map((h) => ActionChip(
                         label: Text(h, style: const TextStyle(fontSize: 12)),
-                        onPressed: () => setState(() => _harvest = h),
+                        onPressed: () => setState(() {
+                          _harvest = h;
+                          _harvestDate = _dateForChip(h);
+                        }),
                         backgroundColor: c.surface,
                         side: BorderSide(color: c.border),
                         shape: RoundedRectangleBorder(
@@ -423,10 +560,39 @@ class _SellCropScreenState extends State<SellCropScreen> {
               ),
             ),
             const SizedBox(height: 24),
+            if (_error != null) ...[
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: c.danger.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: c.danger.withValues(alpha: 0.4)),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(Icons.error_outline, size: 18, color: c.danger),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        _error!,
+                        style: TextStyle(fontSize: 12.5, color: c.danger),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+            ],
             AppPrimaryButton(
-                label: 'Post Crop for Traders',
+                label: _posting
+                    ? 'Saving\u2026'
+                    : (widget.crop == null
+                        ? 'Post Crop for Traders'
+                        : 'Save changes'),
                 icon: Icons.send,
-                onPressed: _postCrop),
+                loading: _posting,
+                onPressed: _posting ? null : _postCrop),
             const SizedBox(height: 24),
           ],
         ),

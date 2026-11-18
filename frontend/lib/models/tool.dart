@@ -1,75 +1,46 @@
+/// A rentable tool listed by a real user on the backend.
+///
+/// Fields mirror the `/tools` response. There is deliberately **no rating** on
+/// a tool yet: reviews do not exist, and a fake star count on another
+/// farmer's tiller would be worse than none.
 class Tool {
+  final int id;
   final String name;
   final String emoji;
   final String category;
+  final String description;
   final double pricePerDay;
   final String location;
-  final double ownerRating;
   final bool available;
-  final String description;
+  final String owner;
 
   const Tool({
+    required this.id,
     required this.name,
     required this.emoji,
     required this.category,
+    required this.description,
     required this.pricePerDay,
     required this.location,
-    required this.ownerRating,
     required this.available,
-    required this.description,
+    required this.owner,
   });
 
-  static List<Tool> sampleData() => const [
-        Tool(
-          name: 'Mahindra Tractor 575',
-          emoji: '\uD83D\uDE9C',
-          category: 'Tractor',
-          pricePerDay: 2500,
-          location: 'Dharwad',
-          ownerRating: 4.7,
-          available: true,
-          description:
-              '75 HP tractor with trolley. Ideal for ploughing and hauling.',
-        ),
-        Tool(
-          name: 'Power Tiller',
-          emoji: '\uD83D\uDEE1\uFE0F',
-          category: 'Tiller',
-          pricePerDay: 1200,
-          location: 'Hubballi',
-          ownerRating: 4.5,
-          available: true,
-          description: '8 HP tiller, perfect for small-to-medium plots.',
-        ),
-        Tool(
-          name: 'Combine Harvester',
-          emoji: '\uD83C\uDF3E',
-          category: 'Harvester',
-          pricePerDay: 6000,
-          location: 'Belagavi',
-          ownerRating: 4.8,
-          available: false,
-          description: 'Wheat & paddy harvester with operator included.',
-        ),
-        Tool(
-          name: 'Knapsack Sprayer',
-          emoji: '\uD83D\uDCAA',
-          category: 'Sprayer',
-          pricePerDay: 300,
-          location: 'Dharwad',
-          ownerRating: 4.3,
-          available: true,
-          description: '16 L battery sprayer for pesticides and fertilizers.',
-        ),
-        Tool(
-          name: 'Water Pump (2 HP)',
-          emoji: '\uD83D\uDCA7',
-          category: 'Pump',
-          pricePerDay: 500,
-          location: 'Gadag',
-          ownerRating: 4.4,
-          available: true,
-          description: 'Portable diesel pump for irrigation and drainage.',
-        ),
-      ];
+  factory Tool.fromJson(Map<String, dynamic> json) {
+    final emoji = json['emoji']?.toString();
+    final category = json['category']?.toString();
+    return Tool(
+      id: (json['id'] as num?)?.toInt() ?? 0,
+      name: json['name']?.toString() ?? '',
+      emoji: (emoji != null && emoji.isNotEmpty) ? emoji : '\u{1FA9C}',
+      category: (category != null && category.isNotEmpty)
+          ? category
+          : 'Other',
+      description: json['description']?.toString() ?? '',
+      pricePerDay: (json['price_per_day'] as num?)?.toDouble() ?? 0,
+      location: json['location']?.toString() ?? '',
+      available: json['available'] == true,
+      owner: json['owner']?.toString() ?? '',
+    );
+  }
 }

@@ -3,7 +3,23 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from . import models
 from .database import engine, migrate_schema
-from .routers import ai, auth, google, otp, places, users, weather
+from .routers import (
+    admin,
+    admin_ops,
+    ai,
+    auth,
+    google,
+    listings,
+    market,
+    marketplace,
+    mycrops,
+    notifications,
+    otp,
+    places,
+    sensors,
+    users,
+    weather,
+)
 
 # Creates tables if they don't exist yet, then applies the inline SQLite
 # migration (adds new columns to existing tables without losing data).
@@ -25,12 +41,40 @@ app.add_middleware(
 )
 
 app.include_router(auth.router)
+app.include_router(admin.router)
+app.include_router(admin_ops.router)
 app.include_router(google.router)
 app.include_router(otp.router)
 app.include_router(users.router)
 app.include_router(weather.router)
 app.include_router(places.router)
 app.include_router(ai.router)
+app.include_router(market.router)
+app.include_router(listings.router)
+app.include_router(mycrops.router)
+app.include_router(notifications.router)
+app.include_router(marketplace.router)
+app.include_router(sensors.router)
+
+
+@app.on_event("startup")
+def _start_market_scheduler() -> None:
+    """Warm the market tables in the background.
+
+    A request never waits on an upstream: reads hit the database or the source
+    TTL cache, and this only keeps both topped up. Disabled with
+    MARKET_SCHEDULER=off, which is what the test suite sets.
+    """
+    from .market import scheduler
+
+    scheduler.start()
+
+
+@app.on_event("shutdown")
+def _stop_market_scheduler() -> None:
+    from .market import scheduler
+
+    scheduler.stop()
 
 
 @app.get("/")

@@ -6,6 +6,13 @@ os.environ["JWT_SECRET_KEY"] = "test-secret"
 os.environ["APP_ENV"] = "development"
 os.environ["OTP_SMS_PROVIDER"] = "console"
 os.environ["GOOGLE_CLIENT_ID"] = "test-client-id.apps.googleusercontent.com"
+# Background market sync would start threads the test process never joins, and
+# would poll a government feed from CI. Reads are tested directly instead.
+os.environ["MARKET_SCHEDULER"] = "off"
+# Keep the assistant deterministic in tests: no network LLM calls.
+os.environ["LLM_BASE_URL"] = ""
+os.environ["LLM_API_KEY"] = ""
+os.environ["LLM_MODEL"] = ""
 
 import pytest
 from fastapi.testclient import TestClient

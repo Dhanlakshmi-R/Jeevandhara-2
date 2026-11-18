@@ -276,8 +276,9 @@ ThemeData _buildTheme(ThemeColors c) {
         return c.textSecondary;
       }),
       trackColor: WidgetStateProperty.resolveWith((states) {
-        if (states.contains(WidgetState.selected))
+        if (states.contains(WidgetState.selected)) {
           return c.primary.withValues(alpha: 0.4);
+        }
         return c.border;
       }),
     ),

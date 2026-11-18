@@ -381,10 +381,10 @@ class _SceneRenderer {
             color: onDark ? _w(_gold, 0.95) : _gold,
             borderRadius: BorderRadius.circular(8),
           ),
-          child: Text(
+          child: const Text(
             '\u20B9 30/kg',
             style: TextStyle(
-              color: const Color(0xFF3D3200),
+              color: Color(0xFF3D3200),
               fontSize: 15,
               fontWeight: FontWeight.w800,
             ),

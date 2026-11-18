@@ -32,9 +32,10 @@ cd backend                          # must be run from here
 .\venv\Scripts\python.exe -m pytest tests -q
 ```
 
-236 tests pass. Run pytest from **inside** `backend/` — from the repo root it
-fails with `ModuleNotFoundError: No module named 'app'`. The 52 warnings are
-pre-existing `datetime.utcnow()` deprecations in the OTP code.
+312 tests pass in about 25s. Run pytest from **inside** `backend/` — from the
+repo root it fails with `ModuleNotFoundError: No module named 'app'`. The
+warnings are pre-existing `datetime.utcnow()` deprecations in the OTP code plus
+Pydantic's class-based-`config` notice in `schemas.py`; none are failures.
 
 ## Endpoints
 
@@ -77,9 +78,19 @@ generation; the routing, tools and citations are identical either way.
 
 The client streams over SSE, so `thinking` events can arrive before the reply.
 
-**Known gap:** `_price_reply()` is still canned. It explains how prices work
-rather than answering with real data, because no market route exists yet. It
-must be replaced before prices can be claimed as live.
+### Price answers are read, never guessed
+
+`_price_reply(prompt)` reads **stored** observations only — it never calls a
+market feed, so a chat turn cannot stall on a government endpoint and cannot
+double the traffic to one. Each quoted rate carries its mandi, its market date
+and its age; rows older than a day are called out rather than shown as today's
+rate. If the store holds nothing for that crop it says so and names which feed
+is responsible, and if the store itself is unreadable it says that instead.
+Nothing is ever substituted for a missing number.
+
+The intent is chosen with the same alias table the price feed normalises with
+(`app/market/normalizer.py`), so "pyaz", "onions" and "ಈರುಳ್ಳಿ" resolve to
+Onion in chat exactly as they do on the prices screen.
 
 ## Weather module
 

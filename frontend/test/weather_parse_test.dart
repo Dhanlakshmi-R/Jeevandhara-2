@@ -18,6 +18,8 @@ const _weatherJson = '''
   "current": {
     "temp_c": 27.4, "feelslike_c": 29.1, "humidity": 58, "wind_kph": 12.6,
     "wind_dir": "WSW", "precip_mm": 1.2, "uv": 6.1, "is_day": 1,
+    "pressure_mb": 1010.0, "vis_km": 6.5,
+    "air_quality": {"aqi": null, "us_epa_index": 2, "category": "Moderate", "pm2_5": 21.0, "pm10": 34.0},
     "condition": {"text": "Partly cloudy", "icon": "//cdn.weatherapi.com/weather/64x64/day/116.png"},
     "last_updated": "2026-09-24 10:00"
   },
@@ -74,6 +76,30 @@ void main() {
     test('condition exposes normalized https icon', () {
       expect(data.condition.httpsIcon, startsWith('https://'));
       expect(data.condition.materialIcon, isNotNull);
+    });
+
+    test('maps pressure, visibility and air quality', () {
+      expect(data.pressureMb, closeTo(1010.0, 0.001));
+      expect(data.visibilityKm, closeTo(6.5, 0.001));
+      expect(data.airQuality, isNotNull);
+      expect(data.airQuality!.usEpaIndex, 2);
+      expect(data.airQuality!.category, 'Moderate');
+      expect(data.airQuality!.pm2_5, closeTo(21.0, 0.001));
+      expect(data.airQuality!.aqi, isNull);
+    });
+
+    test('condition buckets to a plain-language category', () {
+      expect(const WeatherCondition(text: 'Sunny').category,
+          WeatherCategory.sunny);
+      expect(const WeatherCondition(text: 'Partly cloudy').category,
+          WeatherCategory.cloudy);
+      expect(const WeatherCondition(text: 'Moderate rain').category,
+          WeatherCategory.rainy);
+      expect(const WeatherCondition(text: 'Thundery outbreaks').category,
+          WeatherCategory.stormy);
+      // "Heavy freezing drizzle" must read as rain, not snow.
+      expect(const WeatherCondition(text: 'Heavy freezing drizzle').category,
+          WeatherCategory.rainy);
     });
 
     test('maps astro and forecast sections', () {

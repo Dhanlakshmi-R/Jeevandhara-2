@@ -114,13 +114,21 @@ class EnamSource(MarketSource):
         }
         raw = self._post(self.endpoint("trade_data"), payload)
 
+        records = _records_from(raw)
         rows: list[dict[str, Any]] = []
-        for record in _records_from(raw):
+        for record in records:
             mapped = self._map_record(record)
             if mapped:
                 rows.append(mapped)
         if not rows:
-            raise SourceUnavailable(self.name, "no usable rows in response", kind="empty")
+            # "This feed has nothing for this crop" is an answer and must not
+            # count as an outage; records we could not map are a payload
+            # problem and must not be mistaken for one.
+            raise SourceUnavailable(
+                self.name,
+                "no rows matched the commodity" if not records else "no usable rows in response",
+                kind="no_rows" if not records else "error",
+            )
         return rows
 
     def _map_record(self, record: dict[str, Any]) -> dict[str, Any] | None:

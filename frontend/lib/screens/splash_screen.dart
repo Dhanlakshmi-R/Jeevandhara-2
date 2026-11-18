@@ -1,6 +1,9 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:jeevandhara2/admin/admin_shell.dart';
 import 'package:jeevandhara2/services/api_service.dart';
+import 'package:jeevandhara2/services/auth_navigation.dart';
+import 'package:jeevandhara2/services/session_store.dart';
 import 'package:jeevandhara2/theme/colors.dart';
 import 'about_screen.dart';
 import 'home_screen.dart';
@@ -41,14 +44,25 @@ class _SplashScreenState extends State<SplashScreen>
     await Future.delayed(const Duration(milliseconds: 2500));
     if (!mounted) return;
     final api = ApiService();
-    final loggedIn = await api.isLoggedIn();
-    final role = await api.getSavedRole();
+
+    // A persisted refresh token is silently exchanged for a fresh access token.
+    // The password is never involved; only the token that was stored securely.
+    final restored = await api.restoreSession();
 
     Widget next;
-    if (loggedIn && role != null && role != 'farmer') {
-      next = const TraderDashboardScreen();
-    } else if (loggedIn) {
-      next = const HomeScreen();
+    if (restored.user != null) {
+      next = screenForUser(restored.user!);
+    } else if (restored.hasSession) {
+      // Session is still valid but the server was unreachable; route by the
+      // last-known role rather than logging the user out over a dropped Wi-Fi.
+      final role = await SessionStore.readRole();
+      if (role == 'admin') {
+        next = const AdminShell();
+      } else if (role != null && role != 'farmer') {
+        next = const TraderDashboardScreen();
+      } else {
+        next = const HomeScreen();
+      }
     } else {
       next = const AboutScreen(isLanding: true);
     }
@@ -83,19 +97,19 @@ class _SplashScreenState extends State<SplashScreen>
         child: Stack(
           children: [
             // Ambient decorative circles
-            Positioned(
+            const Positioned(
                 top: -60,
                 right: -40,
                 child: _GlowCircle(size: 260, opacity: 0.06)),
-            Positioned(
+            const Positioned(
                 bottom: -100,
                 left: -80,
                 child: _GlowCircle(size: 300, opacity: 0.05)),
-            Positioned(
+            const Positioned(
                 top: 100,
                 left: -50,
                 child: _GlowCircle(size: 180, opacity: 0.04)),
-            Positioned(
+            const Positioned(
                 bottom: 80,
                 right: 40,
                 child: _GlowCircle(size: 140, opacity: 0.05)),

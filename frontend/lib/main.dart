@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'package:jeevandhara2/screens/splash_screen.dart';
+import 'package:jeevandhara2/services/session_store.dart';
 import 'package:jeevandhara2/theme/app_theme.dart';
 import 'package:jeevandhara2/theme/locale.dart';
 
@@ -8,6 +9,9 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await ThemeController.instance.init();
   await LanguageController.instance.init();
+  // Loads any persisted session (access token, remember-me choice) and the
+  // securely-stored refresh token before the first frame.
+  await SessionStore.init();
   runApp(const JeevandharaApp());
 }
 

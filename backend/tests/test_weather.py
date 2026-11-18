@@ -264,6 +264,47 @@ def test_weather_is_cached(client, api_ready, monkeypatch):
     assert calls["n"] == 2
 
 
+def test_weather_fetches_visibility_pressure_and_air_quality(
+    client, api_ready, monkeypatch
+):
+    current = {
+        "location": CURRENT_PAYLOAD["location"],
+        "current": {
+            **CURRENT_PAYLOAD["current"],
+            "pressure_mb": 1012.0,
+            "vis_km": 9.0,
+            "air_quality": {"us-epa-index": 2, "pm2_5": 22.5, "pm10": 40.0},
+        },
+    }
+    _patch_provider(
+        monkeypatch,
+        {"current.json": current, "forecast.json": FORECAST_PAYLOAD},
+    )
+    data = client.get(
+        "/weather", params={"lat": 12.97, "lon": 77.59, "name": "Tumakuru"}
+    ).json()
+
+    assert data["current"]["pressure_mb"] == 1012.0
+    assert data["current"]["vis_km"] == 9.0
+    aq = data["current"]["air_quality"]
+    assert aq["us_epa_index"] == 2
+    assert aq["category"] == "Moderate"
+    assert aq["pm2_5"] == 22.5
+
+
+def test_weather_omits_air_quality_when_provider_lacks_it(
+    client, api_ready, monkeypatch
+):
+    # CURRENT_PAYLOAD has no air_quality block: the field must be null, not
+    # a made-up "Good".
+    _patch_provider(
+        monkeypatch,
+        {"current.json": CURRENT_PAYLOAD, "forecast.json": FORECAST_PAYLOAD},
+    )
+    data = client.get("/weather", params={"lat": 12.97, "lon": 77.59}).json()
+    assert data["current"]["air_quality"] is None
+
+
 def test_weather_maps_provider_errors_to_502(client, api_ready, monkeypatch):
     _patch_provider(
         monkeypatch,

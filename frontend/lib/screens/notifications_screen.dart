@@ -1,21 +1,55 @@
 import 'package:flutter/material.dart';
+
 import 'package:jeevandhara2/models/app_notification.dart';
+import 'package:jeevandhara2/services/notifications_service.dart';
 import 'package:jeevandhara2/theme/app_theme.dart';
 import 'package:jeevandhara2/theme/colors.dart';
 import 'package:jeevandhara2/widgets/ui/states.dart';
 
 class NotificationsScreen extends StatefulWidget {
-  const NotificationsScreen({super.key});
+  final NotificationsService? service;
+
+  const NotificationsScreen({super.key, this.service});
 
   @override
   State<NotificationsScreen> createState() => _NotificationsScreenState();
 }
 
 class _NotificationsScreenState extends State<NotificationsScreen> {
-  List<AppNotification> _notifications = AppNotification.sampleData();
+  late final NotificationsService _service =
+      widget.service ?? NotificationsService();
 
-  void _restore() =>
-      setState(() => _notifications = AppNotification.sampleData());
+  List<AppNotification> _notifications = const [];
+  bool _loading = true;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _reload();
+  }
+
+  Future<void> _reload() async {
+    setState(() {
+      _loading = _notifications.isEmpty;
+      _error = null;
+    });
+    try {
+      final items = await _service.fetch();
+      if (!mounted) return;
+      setState(() {
+        _notifications = items;
+        _loading = false;
+      });
+    } on Exception catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _error = e.toString();
+      });
+    }
+  }
+
   void _markAllRead() => setState(() => _notifications = _notifications
       .map((n) => AppNotification(
           type: n.type,
@@ -28,47 +62,67 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    if (_loading) {
+      return const Padding(
+        padding: EdgeInsets.all(16),
+        child: LoadingSkeleton(rows: 3),
+      );
+    }
+    if (_error != null) {
+      return EmptyState(
+        icon: Icons.cloud_off_outlined,
+        title: 'Could not load notifications',
+        subtitle: _error!,
+        actionLabel: 'Try again',
+        onAction: _reload,
+      );
+    }
     final unread = _notifications.where((n) => !n.seen).length;
-    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-          child: Row(children: [
-            Expanded(
-                child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                  Text('Notifications',
-                      style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: c.textSecondary,
-                          letterSpacing: 0.4)),
-                  Text(unread == 0 ? 'All caught up' : '$unread unread updates',
-                      style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.w700,
-                          color: c.textPrimary))
-                ])),
-            TextButton(
-                onPressed: unread == 0 ? null : _markAllRead,
-                child: const Text('Mark all read')),
-          ])),
-      Expanded(
-          child: _notifications.isEmpty
-              ? EmptyState(
-                  icon: Icons.notifications_none,
-                  title: "You're all caught up",
-                  subtitle:
-                      'Weather, market, and offer alerts will show up here.',
-                  actionLabel: 'Load sample alerts',
-                  onAction: _restore)
-              : ListView.separated(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: _notifications.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 12),
-                  itemBuilder: (context, i) =>
-                      _NotificationCard(notification: _notifications[i]))),
-    ]);
+    return RefreshIndicator(
+      onRefresh: _reload,
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+            child: Row(children: [
+              Expanded(
+                  child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                    Text('Notifications',
+                        style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: c.textSecondary,
+                            letterSpacing: 0.4)),
+                    Text(
+                        unread == 0
+                            ? 'All caught up'
+                            : '$unread unread updates',
+                        style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w700,
+                            color: c.textPrimary))
+                  ])),
+              TextButton(
+                  onPressed: unread == 0 ? null : _markAllRead,
+                  child: const Text('Mark all read')),
+            ])),
+        Expanded(
+            child: _notifications.isEmpty
+                ? const EmptyState(
+                    icon: Icons.notifications_none,
+                    title: 'No notifications yet',
+                    subtitle:
+                        'Weather, market, and offer alerts will show up here once they are sent.',
+                  )
+                : ListView.separated(
+                    padding: const EdgeInsets.all(16),
+                    itemCount: _notifications.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 12),
+                    itemBuilder: (context, i) =>
+                        _NotificationCard(notification: _notifications[i]))),
+      ]),
+    );
   }
 }
 
@@ -86,6 +140,8 @@ class _NotificationCard extends StatelessWidget {
         return (Icons.handshake_outlined, const Color(0xFFF4B942));
       case NotificationType.tool:
         return (Icons.agriculture_outlined, const Color(0xFF8B5E3C));
+      case NotificationType.system:
+        return (Icons.notifications_outlined, const Color(0xFF6B7280));
     }
   }
 
@@ -99,6 +155,8 @@ class _NotificationCard extends StatelessWidget {
         return 'Trade Offer';
       case NotificationType.tool:
         return 'Tool Rental';
+      case NotificationType.system:
+        return 'Update';
     }
   }
 
@@ -111,52 +169,66 @@ class _NotificationCard extends StatelessWidget {
       duration: ThemeController.animDuration,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-          color: c.surface,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-              color: unread ? color.withValues(alpha: 0.5) : c.border)),
-      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Container(
-            width: 48,
-            height: 48,
+        color: c.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: unread ? color.withValues(alpha: 0.5) : c.border,
+        ),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 40,
+            height: 40,
             decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(14)),
-            child: Icon(icon, color: color, size: 22)),
-        const SizedBox(width: 14),
-        Expanded(
-            child:
-                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Row(children: [
-            Expanded(
-                child: Text(notification.title,
-                    style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
-                        color: c.textPrimary))),
-            if (unread)
-              Container(
-                  margin: const EdgeInsets.only(left: 6),
-                  width: 8,
-                  height: 8,
-                  decoration:
-                      BoxDecoration(color: color, shape: BoxShape.circle))
-          ]),
-          const SizedBox(height: 6),
-          Text(notification.message,
-              style:
-                  TextStyle(fontSize: 13, color: c.textSecondary, height: 1.4)),
-          const SizedBox(height: 8),
-          Row(children: [
-            Text(_categoryLabel,
-                style: TextStyle(
-                    fontSize: 11, fontWeight: FontWeight.w600, color: color)),
-            const SizedBox(width: 8),
-            Text('\u2022 ${notification.time}',
-                style: TextStyle(fontSize: 11, color: c.textSecondary))
-          ]),
-        ])),
-      ]),
+              color: color.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(icon, size: 20, color: color),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        notification.title,
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: c.textPrimary,
+                        ),
+                      ),
+                    ),
+                    Text(
+                      _categoryLabel,
+                      style: TextStyle(fontSize: 10.5, color: c.textSecondary),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  notification.message,
+                  style: TextStyle(
+                    fontSize: 12.5,
+                    height: 1.4,
+                    color: c.textSecondary,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  notification.time,
+                  style: TextStyle(fontSize: 11, color: c.textSecondary),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

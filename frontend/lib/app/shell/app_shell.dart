@@ -10,9 +10,9 @@ import 'package:jeevandhara2/app/shell/sidebar.dart';
 import 'package:jeevandhara2/app/shell/top_bar.dart';
 import 'package:jeevandhara2/chat/screens/chat_screen.dart';
 import 'package:jeevandhara2/design/tokens.dart';
-import 'package:jeevandhara2/models/app_notification.dart';
 import 'package:jeevandhara2/models/user.dart';
 import 'package:jeevandhara2/services/api_service.dart';
+import 'package:jeevandhara2/services/notifications_service.dart';
 import 'package:jeevandhara2/theme/app_theme.dart';
 import 'package:jeevandhara2/theme/colors.dart';
 import 'package:jeevandhara2/theme/locale.dart';
@@ -118,8 +118,16 @@ class _AppShellState extends State<AppShell> {
       if (mounted) {
         setState(() {
           _user = user;
-          _unread = AppNotification.sampleData().where((n) => !n.seen).length;
         });
+      }
+      // Best-effort: a real unread count from the notifications inbox.
+      try {
+        final items = await NotificationsService().fetch();
+        if (mounted) {
+          setState(() => _unread = items.where((n) => !n.seen).length);
+        }
+      } catch (_) {
+        // No feed reachable; leave the badge at zero rather than inventing.
       }
     } catch (_) {
       // Signed out or offline. The shell still works; the avatar just shows
@@ -144,6 +152,7 @@ class _AppShellState extends State<AppShell> {
     if (destination == _current) return;
     _materialize(destination);
     if (destination == AppDestination.chat) _chatEpoch++;
+    if (destination == AppDestination.notifications) _unread = 0;
     setState(() => _current = destination);
   }
 
@@ -191,120 +200,150 @@ class _AppShellState extends State<AppShell> {
     final width = MediaQuery.sizeOf(context).width;
 
     if (width < Layout.tabletBreakpoint) {
-      return MobileShell(
-        role: widget.role,
-        destinations: _destinations,
-        current: _current,
-        onSelect: select,
-        user: _user,
-        unread: _unread,
-        locationLabel: _locationLabel,
-        onOpenPalette: _openPalette,
-        onOpenNotifications: () => select(AppDestination.notifications),
-        onOpenProfile: () => select(AppDestination.profile),
-        built: _built,
-        pageFor: _pageFor,
+      return AppShellScope(
+        open: select,
+        child: MobileShell(
+          role: widget.role,
+          destinations: _destinations,
+          current: _current,
+          onSelect: select,
+          user: _user,
+          unread: _unread,
+          locationLabel: _locationLabel,
+          onOpenPalette: _openPalette,
+          onOpenNotifications: () => select(AppDestination.notifications),
+          onOpenProfile: () => select(AppDestination.profile),
+          built: _built,
+          pageFor: _pageFor,
+        ),
       );
     }
 
     final wide = width >= Layout.desktopBreakpoint;
 
-    return Scaffold(
-      backgroundColor: c.background,
-      drawer: wide
-          ? null
-          : Drawer(
-              backgroundColor: Colors.transparent,
-              child: SafeArea(
-                child: Sidebar(
-                  role: widget.role,
-                  current: _current,
-                  onSelect: (d) {
-                    Navigator.of(context).pop();
-                    select(d);
-                  },
-                  user: _user,
-                  unread: _unread,
-                  onOpenPalette: () {
-                    Navigator.of(context).pop();
-                    _openPalette();
-                  },
-                  collapsible: false,
-                ),
-              ),
-            ),
-      body: Focus(
-        autofocus: true,
-        onKeyEvent: (node, event) {
-          // Ctrl+K or Cmd+K opens the command palette.
-          if (event is KeyDownEvent) {
-            final isMeta = event.logicalKey == LogicalKeyboardKey.metaLeft ||
-                event.logicalKey == LogicalKeyboardKey.metaRight;
-            final isCtrl = event.logicalKey == LogicalKeyboardKey.controlLeft ||
-                event.logicalKey == LogicalKeyboardKey.controlRight;
-            if (event.logicalKey == LogicalKeyboardKey.keyK &&
-                (isMeta || isCtrl)) {
-              _openPalette();
-              return KeyEventResult.handled;
-            }
-          }
-          return KeyEventResult.ignored;
-        },
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            if (wide)
-              Sidebar(
-                role: widget.role,
-                current: _current,
-                onSelect: select,
-                user: _user,
-                unread: _unread,
-                onOpenPalette: _openPalette,
-                collapsible: true,
-              ),
-            Expanded(
-              child: Column(
-                children: [
-                  // `Builder` puts the menu button's context below the Scaffold
-                  // so `Scaffold.of` can reach the drawer.
-                  Builder(
-                    builder: (inner) => TopBar(
-                      title: context.str(_current.labelKey),
-                      subtitle: _todayLabel(context),
-                      locationLabel: _locationLabel,
+    return AppShellScope(
+        open: select,
+        child: Scaffold(
+          backgroundColor: c.background,
+          drawer: wide
+              ? null
+              : Drawer(
+                  backgroundColor: Colors.transparent,
+                  child: SafeArea(
+                    child: Sidebar(
+                      role: widget.role,
+                      current: _current,
+                      onSelect: (d) {
+                        Navigator.of(context).pop();
+                        select(d);
+                      },
+                      user: _user,
                       unread: _unread,
-                      onMenu:
-                          wide ? null : () => Scaffold.of(inner).openDrawer(),
-                      onOpenPalette: _openPalette,
-                      onOpenNotifications: () =>
-                          select(AppDestination.notifications),
-                      onOpenProfile: () => select(AppDestination.profile),
+                      onOpenPalette: () {
+                        Navigator.of(context).pop();
+                        _openPalette();
+                      },
+                      collapsible: false,
                     ),
                   ),
-                  Expanded(
-                    child: IndexedStack(
-                      index: _built.indexOf(_current),
-                      children: [
-                        for (final d in _built)
-                          KeyedSubtree(
-                            key: ValueKey(d),
-                            child: _pageFor(d),
-                          ),
-                      ],
-                    ),
+                ),
+          body: Focus(
+            autofocus: true,
+            onKeyEvent: (node, event) {
+              // Ctrl+K or Cmd+K opens the command palette.
+              if (event is KeyDownEvent) {
+                final isMeta =
+                    event.logicalKey == LogicalKeyboardKey.metaLeft ||
+                        event.logicalKey == LogicalKeyboardKey.metaRight;
+                final isCtrl =
+                    event.logicalKey == LogicalKeyboardKey.controlLeft ||
+                        event.logicalKey == LogicalKeyboardKey.controlRight;
+                if (event.logicalKey == LogicalKeyboardKey.keyK &&
+                    (isMeta || isCtrl)) {
+                  _openPalette();
+                  return KeyEventResult.handled;
+                }
+              }
+              return KeyEventResult.ignored;
+            },
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                if (wide)
+                  Sidebar(
+                    role: widget.role,
+                    current: _current,
+                    onSelect: select,
+                    user: _user,
+                    unread: _unread,
+                    onOpenPalette: _openPalette,
+                    collapsible: true,
                   ),
-                ],
-              ),
+                Expanded(
+                  child: Column(
+                    children: [
+                      // `Builder` puts the menu button's context below the Scaffold
+                      // so `Scaffold.of` can reach the drawer.
+                      Builder(
+                        builder: (inner) => TopBar(
+                          title: context.str(_current.labelKey),
+                          subtitle: _todayLabel(context),
+                          locationLabel: _locationLabel,
+                          unread: _unread,
+                          onMenu: wide
+                              ? null
+                              : () => Scaffold.of(inner).openDrawer(),
+                          onOpenPalette: _openPalette,
+                          onOpenNotifications: () =>
+                              select(AppDestination.notifications),
+                          onOpenProfile: () => select(AppDestination.profile),
+                        ),
+                      ),
+                      Expanded(
+                        child: IndexedStack(
+                          index: _built.indexOf(_current),
+                          children: [
+                            for (final d in _built)
+                              KeyedSubtree(
+                                key: ValueKey(d),
+                                child: _pageFor(d),
+                              ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
-      ),
-    );
+          ),
+        ));
   }
 
   /// Localised through [MaterialLocalizations] so the header reads correctly in
   /// Kannada without a second date table here.
   String _todayLabel(BuildContext context) =>
       MaterialLocalizations.of(context).formatMediumDate(DateTime.now());
+}
+
+/// Gives a destination page a way to switch the shell to another destination.
+///
+/// The shell builds pages without arguments, so a page like the dashboard's
+/// "View all" link needs a handle on navigation that does not require threading
+/// a callback through every builder. `maybeOf` returns null outside the shell,
+/// which keeps pages usable in isolation tests.
+class AppShellScope extends InheritedWidget {
+  final void Function(AppDestination destination) open;
+
+  const AppShellScope({
+    super.key,
+    required this.open,
+    required super.child,
+  });
+
+  static AppShellScope? maybeOf(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<AppShellScope>();
+
+  @override
+  bool updateShouldNotify(AppShellScope oldWidget) => open != oldWidget.open;
 }

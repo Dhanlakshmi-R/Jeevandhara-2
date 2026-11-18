@@ -170,13 +170,16 @@ class MandiApiSource(MarketSource):
         payload = self._request_json(self.endpoint("prices"), params=query)
         records = self._extract_records(payload)
         if not records:
-            raise SourceUnavailable(self.name, "no rows returned", kind="empty")
+            # An answer, not an outage: the feed simply does not carry this
+            # crop. Marked so the failover chain can say "no source quotes
+            # this" instead of "every source is down".
+            raise SourceUnavailable(self.name, "no rows returned", kind="no_rows")
 
         rows = [mapped for mapped in (self._map_record(r) for r in records) if mapped]
         rows = self._filter(rows, commodity=commodity, state=state, district=district, market=market)
 
         if not rows:
-            raise SourceUnavailable(self.name, "no rows matched the filter", kind="empty")
+            raise SourceUnavailable(self.name, "no rows matched the filter", kind="no_rows")
         return rows[:limit]
 
     @staticmethod

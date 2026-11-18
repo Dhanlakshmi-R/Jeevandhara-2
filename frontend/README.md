@@ -37,7 +37,7 @@ cd frontend
 flutter test
 ```
 
-75 tests pass. For a single file:
+146 tests pass. For a single file:
 
 ```bash
 flutter test test/weather_screen_test.dart
@@ -152,29 +152,95 @@ flutter test test/place_search_test.dart          # search + recommendations
 flutter test test/find_place_screen_test.dart     # picker (both paths)
 flutter test test/weather_screen_test.dart        # dashboard
 flutter test test/weather_parse_test.dart         # response parsing
+flutter test test/market_parse_test.dart          # market provenance parsing
+flutter test test/market_prices_screen_test.dart  # prices + honesty states
 flutter test test/app_shell_test.dart             # navigation + roles
 flutter test test/ai_context_test.dart            # assistant context
 ```
 
 ## Market prices screen
 
-`lib/screens/market_prices_screen.dart` currently renders
-`MarketPrice.sampleData()`. **It is not connected to any source** — the
-backend market layer exists but is not yet exposed over HTTP.
+`lib/screens/market_prices_screen.dart` now reads the backend over HTTP
+(`/market/prices`, `/market/status`, `/market/commodities`, `/market/mandis`)
+through `lib/services/market_service.dart`, and every row carries its
+provenance:
 
-The replacement needs a provenance model rather than just new fields, because
-the backend distinguishes `live`, `stale`, `unverified` and `unavailable`
-sources, and a screen that collapses those into one list of numbers is exactly
-the failure the backend was designed to prevent. Planned:
+- `lib/design/provenance.dart` — `Provenance` (source, tier, freshness,
+  observed date, lag, actionable), `DataTier` (A/B/C/D, unknown renders `?`
+  rather than pretending to be A), `Freshness`, `SourceStatus`, `MarketStatus`,
+  and `MarketUnavailableException` carrying the 503 `attempts` block.
+- `lib/widgets/ui/provenance_chip.dart` — tier letter + feed name per row, and
+  a freshness badge whose age comes from the row's own market date.
+- `lib/widgets/ui/data_source_status.dart` — `DataSourceStatusBanner` (which
+  feeds are off and why, verbatim), `SourceListPanel`, and `FreshnessBanner`
+  (built only when the window is not all fresh).
 
-- `DataOrigin` + `DataSourceStatus` in `lib/services/data_source_status.dart`
-- a shared provenance banner in `lib/widgets/ui/`
-- polling every 5 minutes while the market is open, pull-to-refresh, skeletons
-- demand-ring taps opening the component breakdown for that mandi
+Failure paths stay honest: a 503 renders its per-source reasons with a retry,
+and an empty store renders "nothing is shown here until a source reports one"
+instead of a padded list. Pull-to-refresh re-reads status and prices together.
+`MarketPrice.sampleData()` is gone, as are the sample lists in `trader`,
+`crop`, `product`, `tool` and `app_notification`.
 
-`lib/ai/prompt/tool_registry.dart` already maps `AiTool.prices` to this screen,
-so the assistant can already navigate to it. It cannot yet answer a price
-question with real data.
+## My Crops and Marketplace
+
+Both screens are wired to their routers:
+
+- `lib/services/crops_service.dart` reads `/my-crops` and posts, patches and
+  retires rows with the caller's bearer token. `CropListing` keeps the
+  server's typed fields (quantity, price, status, harvest date), renders
+  "No asking price" when `expected_price` is absent, and hides rows the farmer
+  took down.
+- `lib/services/marketplace_service.dart` reads `/marketplace` and creates or
+  retires products. `MarketplaceProduct.rating` stays null until reviews exist,
+  so a card says "No reviews" rather than drawing unearned stars. The remove
+  control only appears for the row's owner (`poster_id`).
+- The dashboard's "Recent Crop Listings" card reads the same `/my-crops` rows
+  and its "View all" link opens the My Crops destination through
+  `AppShellScope`, an inherited widget exposed by `AppShell`.
+- Both My Crops and Marketplace rows now have an owner-only Edit action that
+  reuses the create form in edit mode and PATCHes the existing row.
+
+Checkout has no order endpoint behind it, so the cart says so explicitly:
+nothing is sent to a seller and the cart is kept.
+
+`tool_rental_screen.dart` and `find_traders_screen.dart` are wired the same
+way. The notifications screen now reads `/notifications` (audience-filtered
+broadcasts) and the shell badge reflects the unread count; marking read is
+local because delivery is not fanned out into per-user rows.
+
+## Trader side
+
+- `lib/services/listings_service.dart` now attaches the bearer token to
+  `/traders/me` reads (a 401 becomes "Sign in to manage your trading card")
+  and accepts both the bare array `/traders/me` returns and an `{items}`
+  envelope. `saveTraderOffer` sends company, crops, price, note, emoji and
+  availability; `deleteTraderOffer` takes the card down.
+- `TraderOverviewPage` reads `/traders/me` and renders exactly the row the
+  server stores — the trader's own buying card. The old invented KPIs
+  (`₹4,82,500`, 24 deals, a 4.6 rating), the hardcoded deals list and the
+  "Offer posted to nearby farmers!" snackbar are gone. A failed read shows a
+  retry; no card shows an honest invitation to post one.
+- `TraderPostOfferPage` prefills from the existing card and publishes through
+  `POST /traders/me`, validating that at least one crop is listed and that a
+  price is positive when supplied.
+- `lib/services/trader_offer_store.dart` carries the saved card from the form
+  to the dashboard, which the shell keeps alive in an `IndexedStack`. The
+  server stays the source of truth: every dashboard visit re-reads the card.
+- `TraderDealsPage` shows "No deals yet" because the backend stores buying
+  cards, not orders — there is no deal history to read.
+
+
+Every user-visible string on these widgets lives in `lib/theme/locale.dart`
+with an English and a Kannada entry; models that format labels take an
+optional reader (`priceLabelOf(context.str)`) and fall back to English when
+called with no reader.
+
+Still to come: polling while the market is open, and demand rings opening the
+component breakdown for a mandi.
+
+`lib/ai/prompt/tool_registry.dart` maps `AiTool.prices` to this screen, and
+`backend/app/ai_chat.py` answers price questions from stored rows with the
+same provenance rules.
 
 ## Known issues
 

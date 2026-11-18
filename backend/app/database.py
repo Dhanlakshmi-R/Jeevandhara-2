@@ -51,6 +51,8 @@ def migrate_schema():
         "provider_user_id": "ALTER TABLE users ADD COLUMN provider_user_id VARCHAR",
         "profile_image": "ALTER TABLE users ADD COLUMN profile_image VARCHAR",
         "profile_complete": "ALTER TABLE users ADD COLUMN profile_complete BOOLEAN DEFAULT 1",
+        "is_active": "ALTER TABLE users ADD COLUMN is_active BOOLEAN DEFAULT 1",
+        "is_superadmin": "ALTER TABLE users ADD COLUMN is_superadmin BOOLEAN DEFAULT 0",
     }
     with engine.begin() as conn:
         for name, ddl in additions.items():

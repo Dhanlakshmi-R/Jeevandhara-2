@@ -1,5 +1,9 @@
-import 'dart:async';
+import 'dart:io';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:jeevandhara2/ai/service/ai_service.dart';
 import 'package:jeevandhara2/theme/colors.dart';
 import 'package:jeevandhara2/widgets/layout.dart';
 import 'package:jeevandhara2/widgets/ui/buttons.dart';
@@ -12,70 +16,69 @@ class QualityAnalysisScreen extends StatefulWidget {
   State<QualityAnalysisScreen> createState() => _QualityAnalysisScreenState();
 }
 
-enum _Phase { idle, uploading, analyzing, done }
-
 class _QualityAnalysisScreenState extends State<QualityAnalysisScreen> {
-  _Phase _phase = _Phase.idle;
-  double _progress = 0;
-  Timer? _timer;
+  final AiService _service = AiService();
+  final ImagePicker _picker = ImagePicker();
 
-  int _healthScore = 0;
-  String _grade = '';
-  String _risk = '';
-  List<String> _tags = [];
+  String? _imagePath;
+  bool _analyzing = false;
+  Map<String, dynamic>? _result;
+  String? _error;
 
   @override
   void dispose() {
-    _timer?.cancel();
+    _service.dispose();
     super.dispose();
   }
 
-  void _startAnalysis() {
-    if (_phase == _Phase.analyzing) return;
-    setState(() {
-      _phase = _Phase.uploading;
-      _progress = 0;
-    });
+  Future<void> _pickAndAnalyze(ImageSource source) async {
+    try {
+      final file = await _picker.pickImage(source: source);
+      if (file == null) return;
 
-    _timer?.cancel();
-    _timer = Timer.periodic(const Duration(milliseconds: 120), (t) {
-      if (!mounted) return;
-      setState(() => _progress += 0.02 + (t.tick % 3) * 0.005);
-      if (_progress >= 0.45 && _phase == _Phase.uploading) {
-        setState(() => _phase = _Phase.analyzing);
-      }
-      if (_progress >= 1) {
-        t.cancel();
-        _finishAnalysis();
-      }
-    });
-  }
+      setState(() {
+        _imagePath = file.path;
+        _analyzing = true;
+        _result = null;
+        _error = null;
+      });
 
-  void _finishAnalysis() {
-    setState(() {
-      _phase = _Phase.done;
-      _healthScore = 87;
-      _grade = 'Grade A';
-      _risk = 'Low';
-      _tags = [
-        'Healthy leaves - no disease spotted',
-        'Good cleanliness - no foreign matter',
-        'Uniform size & ripeness',
-        'Minor cosmetic blemish on 2% fruits',
-      ];
-    });
+      try {
+        final data = await _service.analyzeQuality(
+          filename: file.name,
+          cropName: '',
+          language: 'en',
+        );
+        if (!mounted) return;
+        if (data.isEmpty) {
+          setState(() => _error = 'Analysis failed. Please try again.');
+        } else {
+          setState(() => _result = data);
+        }
+      } catch (_) {
+        if (mounted) setState(() => _error = 'Analysis failed. Please try again.');
+      } finally {
+        if (mounted) setState(() => _analyzing = false);
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _error = 'Could not open image picker: $e');
+      }
+    }
   }
 
   void _reset() {
-    _timer?.cancel();
     setState(() {
-      _phase = _Phase.idle;
-      _progress = 0;
+      _imagePath = null;
+      _result = null;
+      _error = null;
+      _analyzing = false;
     });
   }
 
   @override
   Widget build(BuildContext context) {
+    final c = context.colors;
     return Scaffold(
       appBar: AppBar(
         title: const Text('Crop Quality Analysis'),
@@ -86,10 +89,18 @@ class _QualityAnalysisScreenState extends State<QualityAnalysisScreen> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          _buildUploadArea(),
-          if (_phase != _Phase.idle) ...[
+          _buildUploadArea(c),
+          if (_analyzing) ...[
             const SizedBox(height: 20),
-            _buildProgress(),
+            const Center(child: CircularProgressIndicator()),
+          ],
+          if (_error != null) ...[
+            const SizedBox(height: 12),
+            Text(_error!, style: TextStyle(color: c.warning)),
+          ],
+          if (_result != null) ...[
+            const SizedBox(height: 20),
+            _buildResult(c, _result!),
           ],
           const SizedBox(height: 16),
           Text(
@@ -97,14 +108,14 @@ class _QualityAnalysisScreenState extends State<QualityAnalysisScreen> {
             style: TextStyle(
               fontSize: 17,
               fontWeight: FontWeight.w700,
-              color: context.colors.textPrimary,
+              color: c.textPrimary,
             ),
           ),
           const SizedBox(height: 10),
-          AppCard(
+          const AppCard(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              children: const [
+              children: [
                 _StepRow(
                     icon: Icons.camera_alt_outlined,
                     text: 'Take or upload a clear photo of your crop'),
@@ -124,19 +135,9 @@ class _QualityAnalysisScreenState extends State<QualityAnalysisScreen> {
     );
   }
 
-  Widget _buildUploadArea() {
-    final c = context.colors;
-    if (_phase == _Phase.done) {
-      return _ResultCard(
-        healthScore: _healthScore,
-        grade: _grade,
-        risk: _risk,
-        tags: _tags,
-        onReset: _reset,
-      );
-    }
+  Widget _buildUploadArea(ThemeColors c) {
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 36, horizontal: 16),
+      padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
       decoration: BoxDecoration(
         color: c.surface,
         borderRadius: BorderRadius.circular(18),
@@ -144,85 +145,119 @@ class _QualityAnalysisScreenState extends State<QualityAnalysisScreen> {
       ),
       child: Column(
         children: [
-          Container(
-            width: 76,
-            height: 76,
-            decoration: BoxDecoration(
-              color: c.primaryLight,
-              shape: BoxShape.circle,
+          if (_imagePath != null)
+            ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: kIsWeb
+                  ? Image.network(
+                      _imagePath!,
+                      height: 180,
+                      fit: BoxFit.cover,
+                    )
+                  : Image.file(
+                      File(_imagePath!),
+                      height: 180,
+                      fit: BoxFit.cover,
+                    ),
+            )
+          else
+            Container(
+              width: 76,
+              height: 76,
+              decoration: BoxDecoration(
+                color: c.primaryLight,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(Icons.add_a_photo_outlined, size: 34, color: c.primary),
             ),
-            child: Icon(Icons.add_a_photo_outlined, size: 34, color: c.primary),
-          ),
           const SizedBox(height: 14),
           Text(
-            'Upload crop photo or video',
+            _imagePath == null
+                ? 'Upload crop photo'
+                : 'Selected image',
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w700,
               color: c.textPrimary,
             ),
           ),
-          const SizedBox(height: 6),
-          Text(
-            'Drag & drop, or tap to browse\n(JPEG, PNG, MP4 \u00B7 max 50 MB)',
-            textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 13, color: c.textSecondary, height: 1.5),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: AppPrimaryButton(
+                  label: 'Gallery',
+                  icon: Icons.photo_library_outlined,
+                  onPressed: _analyzing ? null : () => _pickAndAnalyze(ImageSource.gallery),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: AppPrimaryButton(
+                  label: 'Camera',
+                  icon: Icons.camera_alt_outlined,
+                  onPressed: _analyzing ? null : () => _pickAndAnalyze(ImageSource.camera),
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 18),
-          AppPrimaryButton(
-              label: 'Analyze Crop Quality',
-              icon: Icons.biotech,
-              onPressed: _startAnalysis),
+          if (_imagePath != null) ...[
+            const SizedBox(height: 10),
+            TextButton(onPressed: _reset, child: const Text('Clear')),
+          ],
         ],
       ),
     );
   }
 
-  Widget _buildProgress() {
-    final c = context.colors;
-    final stage = _phase == _Phase.uploading
-        ? 'Uploading media\u2026'
-        : 'AI analyzing quality\u2026';
-    return AppCard(
+  Widget _buildResult(ThemeColors c, Map<String, dynamic> data) {
+    final cropName = (data['crop_name'] ?? 'Unknown crop').toString();
+    final grade = (data['quality_grade'] ?? '').toString();
+    final score = (data['health_score'] is num) ? (data['health_score'] as num).toInt() : 0;
+    final risk = (data['disease_risk'] ?? '').toString();
+    final uses = (data['uses'] ?? '').toString();
+    final harmful = (data['harmful'] ?? '').toString();
+    final notes = (data['notes'] ?? '').toString();
+
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [c.primaryLight, c.surface],
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+        ),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: c.primary.withValues(alpha: 0.4)),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              _phase == _Phase.analyzing
-                  ? SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(
-                          strokeWidth: 2.5, color: c.primary),
-                    )
-                  : Icon(Icons.cloud_upload_outlined,
-                      color: c.primary, size: 22),
-              const SizedBox(width: 10),
-              Text(
-                stage,
-                style: TextStyle(
-                  fontSize: 14.5,
-                  fontWeight: FontWeight.w600,
-                  color: c.textPrimary,
-                ),
-              ),
-            ],
-          ),
+          Text('AI Analysis Complete',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: c.textPrimary)),
           const SizedBox(height: 12),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(8),
-            child: LinearProgressIndicator(
-              value: _progress,
-              minHeight: 8,
-              backgroundColor: c.primaryLight.withValues(alpha: 0.5),
-              valueColor: AlwaysStoppedAnimation(c.primary),
-            ),
-          ),
+          _ResultLine(label: 'Crop name', value: cropName, icon: Icons.eco, color: c.primary),
           const SizedBox(height: 8),
-          Text(
-            '${(_progress * 100).toStringAsFixed(0)}%',
-            style: TextStyle(fontSize: 12, color: c.textSecondary),
+          _ResultLine(label: 'Quality grade', value: grade, icon: Icons.verified, color: c.positive),
+          const SizedBox(height: 8),
+          _ResultLine(label: 'Health score', value: '$score/100', icon: Icons.favorite, color: c.primary),
+          const SizedBox(height: 8),
+          _ResultLine(label: 'Disease risk', value: risk, icon: Icons.health_and_safety_outlined, color: c.positive),
+          const SizedBox(height: 12),
+          Text('Uses', style: TextStyle(fontWeight: FontWeight.w700, color: c.textPrimary)),
+          Text(uses, style: TextStyle(color: c.textSecondary)),
+          const SizedBox(height: 8),
+          Text('Harmful?', style: TextStyle(fontWeight: FontWeight.w700, color: c.textPrimary)),
+          Text(harmful, style: TextStyle(color: c.textSecondary)),
+          if (notes.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Text('Notes', style: TextStyle(fontWeight: FontWeight.w700, color: c.textPrimary)),
+            Text(notes, style: TextStyle(color: c.textSecondary)),
+          ],
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: AppTonalButton(label: 'Analyze another crop', onPressed: _reset),
           ),
         ],
       ),
@@ -247,152 +282,10 @@ class _StepRow extends StatelessWidget {
         Expanded(
           child: Text(
             text,
-            style:
-                TextStyle(fontSize: 13.5, color: c.textSecondary, height: 1.4),
+            style: TextStyle(fontSize: 13.5, color: c.textSecondary, height: 1.4),
           ),
         ),
       ],
-    );
-  }
-}
-
-class _ResultCard extends StatelessWidget {
-  final int healthScore;
-  final String grade;
-  final String risk;
-  final List<String> tags;
-  final VoidCallback onReset;
-
-  const _ResultCard({
-    required this.healthScore,
-    required this.grade,
-    required this.risk,
-    required this.tags,
-    required this.onReset,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [c.primaryLight, c.surface],
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-        ),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: c.primary.withValues(alpha: 0.4)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(Icons.task_alt, color: c.primary, size: 22),
-              const SizedBox(width: 8),
-              Text(
-                'AI Analysis Complete',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                  color: c.textPrimary,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              SizedBox(
-                width: 92,
-                height: 92,
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    CircularProgressIndicator(
-                      value: healthScore / 100,
-                      strokeWidth: 9,
-                      backgroundColor: c.surface,
-                      valueColor: AlwaysStoppedAnimation(c.primary),
-                    ),
-                    Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            '$healthScore',
-                            style: TextStyle(
-                              fontSize: 24,
-                              fontWeight: FontWeight.w700,
-                              color: c.textPrimary,
-                            ),
-                          ),
-                          Text('/100',
-                              style: TextStyle(
-                                  fontSize: 11, color: c.textSecondary)),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 20),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _ResultLine(
-                        label: 'Quality grade',
-                        value: grade,
-                        icon: Icons.verified,
-                        color: c.positive),
-                    const SizedBox(height: 10),
-                    _ResultLine(
-                      label: 'Disease risk',
-                      value: risk,
-                      icon: Icons.health_and_safety_outlined,
-                      color: c.positive,
-                    ),
-                    const SizedBox(height: 10),
-                    _ResultLine(
-                      label: 'Suggested price',
-                      value: '\u20B927 \u2013 \u20B931/kg',
-                      icon: Icons.currency_rupee,
-                      color: c.accent,
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          for (final tag in tags)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Icon(Icons.check_circle, size: 16, color: c.primary),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      tag,
-                      style: TextStyle(fontSize: 13, color: c.textPrimary),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          const SizedBox(height: 8),
-          SizedBox(
-            width: double.infinity,
-            child: AppTonalButton(
-                label: 'Analyze another crop', onPressed: onReset),
-          ),
-        ],
-      ),
     );
   }
 }
@@ -418,16 +311,11 @@ class _ResultLine extends StatelessWidget {
         Icon(icon, size: 18, color: color),
         const SizedBox(width: 8),
         Expanded(
-          child: Text(label,
-              style: TextStyle(fontSize: 12.5, color: c.textSecondary)),
+          child: Text(label, style: TextStyle(fontSize: 12.5, color: c.textSecondary)),
         ),
         Text(
           value,
-          style: TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w700,
-            color: c.textPrimary,
-          ),
+          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: c.textPrimary),
         ),
       ],
     );

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:jeevandhara2/theme/colors.dart';
 import 'agri_scene.dart';
 import 'layout.dart';
+import 'ui/network_or_asset_image.dart';
 
 /// Shared split-screen shell for auth pages.
 ///
@@ -16,6 +17,7 @@ class AuthShell extends StatelessWidget {
   final AgriSceneKind scene;
   final String panelTitle;
   final String panelSubtitle;
+  final String? backgroundImageUrl;
 
   const AuthShell({
     super.key,
@@ -25,6 +27,7 @@ class AuthShell extends StatelessWidget {
     this.scene = AgriSceneKind.sunrise,
     this.panelTitle = 'Jeevandhara',
     this.panelSubtitle = 'Growing Prosperity, Together.',
+    this.backgroundImageUrl,
   });
 
   @override
@@ -40,7 +43,10 @@ class AuthShell extends StatelessWidget {
           children: [
             Expanded(
                 child: _SidePanel(
-                    scene: scene, title: panelTitle, subtitle: panelSubtitle)),
+                    scene: scene,
+                    title: panelTitle,
+                    subtitle: panelSubtitle,
+                    backgroundImageUrl: backgroundImageUrl)),
             Expanded(
               child: _FormPane(
                 headline: headline,
@@ -60,7 +66,10 @@ class AuthShell extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             _MobileHeader(
-                scene: scene, title: panelTitle, subtitle: panelSubtitle),
+                scene: scene,
+                title: panelTitle,
+                subtitle: panelSubtitle,
+                backgroundImageUrl: backgroundImageUrl),
             Transform.translate(
               offset: const Offset(0, -20),
               child: Padding(
@@ -83,26 +92,39 @@ class _SidePanel extends StatelessWidget {
   final AgriSceneKind scene;
   final String title;
   final String subtitle;
+  final String? backgroundImageUrl;
 
   const _SidePanel({
     required this.scene,
     required this.title,
     required this.subtitle,
+    this.backgroundImageUrl,
   });
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
     return Container(
-      decoration: BoxDecoration(
+      decoration: const BoxDecoration(
         gradient: LinearGradient(
-          colors: [c.brandGradientStart, c.primaryDark, c.brandGradientEnd],
+          colors: [Color(0xFF4E342E), Color(0xFF3E2723), Color(0xFF5D4037)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
       ),
       child: Stack(
         children: [
+          Positioned.fill(
+            child: Opacity(
+              opacity: 0.45,
+              child: NetworkOrAssetImage(
+                url: backgroundImageUrl ??
+                    'https://images.unsplash.com/photo-1625246333195-78d9c38ad449?w=1200&q=80',
+                fit: BoxFit.cover,
+                semanticLabel: 'Farmer working in a field',
+              ),
+            ),
+          ),
           Positioned(top: -80, right: -60, child: _blob(260, 0.10)),
           Positioned(bottom: -120, left: -70, child: _blob(320, 0.08)),
           SafeArea(
@@ -129,7 +151,7 @@ class _SidePanel extends StatelessWidget {
                     ],
                   ),
                   const Spacer(),
-                  AgriScene(kind: scene, onDark: true, width: 460, height: 330),
+                  SizedBox.shrink(),
                   const Spacer(),
                   Text(
                     subtitle,
@@ -251,11 +273,13 @@ class _MobileHeader extends StatelessWidget {
   final AgriSceneKind scene;
   final String title;
   final String subtitle;
+  final String? backgroundImageUrl;
 
   const _MobileHeader({
     required this.scene,
     required this.title,
     required this.subtitle,
+    this.backgroundImageUrl,
   });
 
   @override
@@ -263,17 +287,27 @@ class _MobileHeader extends StatelessWidget {
     final c = context.colors;
     return Container(
       padding: const EdgeInsets.fromLTRB(20, 18, 12, 70),
-      decoration: BoxDecoration(
+      decoration: const BoxDecoration(
         gradient: LinearGradient(
-          colors: [c.brandGradientStart, c.primaryDark, c.brandGradientEnd],
+          colors: [Color(0xFF4E342E), Color(0xFF3E2723), Color(0xFF5D4037)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: const BorderRadius.vertical(bottom: Radius.circular(32)),
+        borderRadius: BorderRadius.vertical(bottom: Radius.circular(32)),
       ),
       child: Stack(
         clipBehavior: Clip.none,
         children: [
+          if (backgroundImageUrl != null)
+            Positioned.fill(
+              child: Opacity(
+                opacity: 0.4,
+                child: NetworkOrAssetImage(
+                  url: backgroundImageUrl,
+                  fit: BoxFit.cover,
+                ),
+              ),
+            ),
           Positioned(
               right: -30,
               top: -30,
@@ -300,13 +334,6 @@ class _MobileHeader extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 20),
-              Center(
-                child: SizedBox(
-                  width: 300,
-                  height: 170,
-                  child: AgriScene(kind: scene, onDark: true),
-                ),
-              ),
               const SizedBox(height: 12),
               Text(
                 subtitle,

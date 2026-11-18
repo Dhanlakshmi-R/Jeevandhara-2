@@ -5,6 +5,7 @@ import 'package:jeevandhara2/ai/models/chat_message.dart';
 import 'package:jeevandhara2/ai/prompt/tool_registry.dart';
 import 'package:jeevandhara2/chat/widgets/assistant_text.dart';
 import 'package:jeevandhara2/chat/widgets/citation_chips.dart';
+import 'package:jeevandhara2/chat/widgets/read_aloud_button.dart';
 import 'package:jeevandhara2/chat/widgets/thinking_indicator.dart';
 import 'package:jeevandhara2/chat/widgets/tool_result_card.dart';
 import 'package:jeevandhara2/design/palette.dart';
@@ -24,29 +25,33 @@ class MessageBubble extends StatelessWidget {
     this.onRetry,
     this.onDismissError,
     this.onOpenTool,
+    this.language = 'en',
   });
 
   final ChatMessage message;
   final VoidCallback? onRetry;
   final VoidCallback? onDismissError;
   final void Function(AiTool tool)? onOpenTool;
+  final String language;
 
   @override
   Widget build(BuildContext context) {
-    if (message.isUser) return _UserTurn(message: message);
+    if (message.isUser) return _UserTurn(message: message, language: language);
     return _AssistantTurn(
       message: message,
       onRetry: onRetry,
       onDismissError: onDismissError,
       onOpenTool: onOpenTool,
+      language: language,
     );
   }
 }
 
 class _UserTurn extends StatelessWidget {
-  const _UserTurn({required this.message});
+  const _UserTurn({required this.message, this.language = 'en'});
 
   final ChatMessage message;
+  final String language;
 
   @override
   Widget build(BuildContext context) {
@@ -72,7 +77,14 @@ class _UserTurn extends StatelessWidget {
                 ),
                 border: Border.all(color: context.ai.userBubbleBorder),
               ),
-              child: Text(message.text, style: AppType.userTurn(context)),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(message.text, style: AppType.userTurn(context)),
+                  ReadAloudButton(text: message.text, language: language),
+                ],
+              ),
             ),
           ),
         ],
@@ -87,12 +99,14 @@ class _AssistantTurn extends StatelessWidget {
     this.onRetry,
     this.onDismissError,
     this.onOpenTool,
+    this.language = 'en',
   });
 
   final ChatMessage message;
   final VoidCallback? onRetry;
   final VoidCallback? onDismissError;
   final void Function(AiTool tool)? onOpenTool;
+  final String language;
 
   @override
   Widget build(BuildContext context) {
@@ -144,6 +158,7 @@ class _AssistantTurn extends StatelessWidget {
                     text: message.text,
                     failed: message.status == MessageStatus.failed,
                     onRetry: onRetry,
+                    language: language,
                   ),
                 ],
               ],
@@ -221,16 +236,24 @@ class _CaretState extends State<_Caret> with SingleTickerProviderStateMixin {
 }
 
 class _TurnActions extends StatelessWidget {
-  const _TurnActions({required this.text, required this.failed, this.onRetry});
+  const _TurnActions({
+    required this.text,
+    required this.failed,
+    this.onRetry,
+    this.language = 'en',
+  });
 
   final String text;
   final bool failed;
   final VoidCallback? onRetry;
+  final String language;
 
   @override
   Widget build(BuildContext context) {
     return Row(
       children: [
+        ReadAloudButton(text: text, language: language),
+        const SizedBox(width: Gap.xs),
         _MiniAction(
           icon: Icons.copy_rounded,
           tooltip: 'Copy answer',
@@ -238,9 +261,9 @@ class _TurnActions extends StatelessWidget {
             await Clipboard.setData(ClipboardData(text: text));
             if (context.mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: const Text('Answer copied'),
-                  duration: const Duration(seconds: 2),
+                const SnackBar(
+                  content: Text('Answer copied'),
+                  duration: Duration(seconds: 2),
                   behavior: SnackBarBehavior.floating,
                 ),
               );

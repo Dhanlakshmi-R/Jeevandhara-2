@@ -168,6 +168,29 @@ def _condition(item: dict) -> dict:
     }
 
 
+# US EPA air-quality index (1-6) to a plain-language category lives in the
+# Open-Meteo provider module so both providers share one definition.
+def _air_quality(block) -> dict | None:
+    """Normalize a WeatherAPI `air_quality` block. None when the provider
+    returned nothing (or the plan does not include it) -- never invented."""
+    if not isinstance(block, dict):
+        return None
+    raw_index = block.get("us-epa-index")
+    try:
+        index = int(raw_index)
+    except (TypeError, ValueError):
+        index = None
+    if index is None:
+        return None
+    return {
+        "aqi": None,
+        "us_epa_index": index,
+        "category": open_meteo.epa_category(index),
+        "pm2_5": block.get("pm2_5"),
+        "pm10": block.get("pm10"),
+    }
+
+
 def _with_name(result: dict, name: str) -> dict:
     """Layer the caller's chosen place name onto a provider payload.
 
@@ -196,7 +219,7 @@ def fetch_weather(lat: float, lon: float, name: str) -> dict:
         _weather_cache.set(cache_key, result)
         return _with_name(result, name)
 
-    current = api_get_json("current.json", {"q": f"{lat},{lon}", "aqi": "no"})
+    current = api_get_json("current.json", {"q": f"{lat},{lon}", "aqi": "yes"})
     forecast = api_get_json(
         "forecast.json",
         {"q": f"{lat},{lon}", "days": "7", "aqi": "no", "alerts": "yes"},
@@ -266,9 +289,12 @@ def fetch_weather(lat: float, lon: float, name: str) -> dict:
             "wind_degree": cur.get("wind_degree"),
             "wind_dir": cur.get("wind_dir", ""),
             "precip_mm": cur.get("precip_mm", 0),
+            "pressure_mb": cur.get("pressure_mb"),
+            "vis_km": cur.get("vis_km"),
             "uv": cur.get("uv"),
             "is_day": cur.get("is_day", 1),
             "last_updated": cur.get("last_updated", ""),
+            "air_quality": _air_quality(cur.get("air_quality")),
         },
         "astro": {"sunrise": astro.get("sunrise", ""), "sunset": astro.get("sunset", "")},
         "hourly": hourly,

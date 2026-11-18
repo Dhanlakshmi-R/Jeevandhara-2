@@ -45,16 +45,16 @@ class LoadingSkeleton extends StatelessWidget {
               borderRadius: BorderRadius.circular(14),
               border: Border.all(color: c.border.withValues(alpha: 0.5)),
             ),
-            child: Row(
+            child: const Row(
               children: [
-                const SkeletonBox(width: 48, height: 48, radius: 12),
-                const SizedBox(width: 12),
+                SkeletonBox(width: 48, height: 48, radius: 12),
+                SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       SkeletonBox(width: 160, height: 14),
-                      const SizedBox(height: 8),
+                      SizedBox(height: 8),
                       SkeletonBox(width: 90, height: 12),
                     ],
                   ),
@@ -77,7 +77,7 @@ class LoadingGrid extends StatelessWidget {
       return GridView.builder(
         shrinkWrap: true,
         physics: const NeverScrollableScrollPhysics(),
-        gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
+        gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
           maxCrossAxisExtent: 340,
           mainAxisExtent: 150,
           crossAxisSpacing: 14,

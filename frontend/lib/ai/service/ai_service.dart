@@ -195,6 +195,7 @@ class AiService {
     required String prompt,
     required ChatMessage message,
     void Function()? onProgress,
+    String language = 'en',
   }) async {
     final request = http.Request('POST', Uri.parse('$_baseUrl/ai/chat'))
       ..headers['Content-Type'] = 'application/json'
@@ -204,6 +205,7 @@ class AiService {
         if (lat != null) 'lat': lat,
         if (lon != null) 'lon': lon,
         if (placeName.isNotEmpty) 'place_name': placeName,
+        'language': language,
       });
 
     isStreaming = true;
@@ -299,6 +301,57 @@ class AiService {
       // Fall through to the generic message.
     }
     return 'The assistant could not respond ($statusCode).';
+  }
+
+  /// Translates [text] into [language] (en/kn/hi) using the backend LLM.
+  Future<String> translate({
+    required String text,
+    required String language,
+  }) async {
+    if (text.trim().isEmpty || language == 'en') return text;
+    try {
+      final response = await _client
+          .post(
+            Uri.parse('$_baseUrl/ai/translate'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({'text': text, 'language': language}),
+          )
+          .timeout(const Duration(seconds: 30));
+      if (response.statusCode == 200) {
+        final decoded = jsonDecode(response.body) as Map<String, dynamic>;
+        final result = (decoded['text'] ?? '').toString();
+        if (result.trim().isNotEmpty) return result;
+      }
+    } catch (_) {
+      // Fall through to the original text.
+    }
+    return text;
+  }
+
+  Future<Map<String, dynamic>> analyzeQuality({
+    required String filename,
+    String cropName = '',
+    String language = 'en',
+  }) async {
+    try {
+      final response = await _client
+          .post(
+            Uri.parse('$_baseUrl/ai/quality'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({
+              'filename': filename,
+              'crop_name': cropName,
+              'language': language,
+            }),
+          )
+          .timeout(const Duration(seconds: 60));
+      if (response.statusCode == 200) {
+        return (jsonDecode(response.body) as Map).cast<String, dynamic>();
+      }
+    } catch (_) {
+      // Fall through to empty result.
+    }
+    return <String, dynamic>{};
   }
 
   void dispose() => _client.close();

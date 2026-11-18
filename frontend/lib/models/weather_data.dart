@@ -24,22 +24,81 @@ class WeatherCondition {
       ? ''
       : (iconUrl.startsWith('//') ? 'https:$iconUrl' : iconUrl);
 
-  IconData get materialIcon {
+  /// Coarse bucket used for the plain-language condition and its colour, so a
+  /// farmer recognises the weather from the icon alone.
+  WeatherCategory get category {
     final c = text.toLowerCase();
-    if (c.contains('thunder') || c.contains('storm'))
-      return Icons.thunderstorm_rounded;
-    if (c.contains('snow') || c.contains('sleet')) return Icons.ac_unit_rounded;
-    if (c.contains('rain') || c.contains('drizzle'))
-      return Icons.umbrella_rounded;
-    if (c.contains('fog') || c.contains('mist') || c.contains('haze'))
-      return Icons.foggy;
-    if (c.contains('cloud')) return Icons.wb_cloudy_rounded;
-    if (c.contains('sun') || c.contains('clear')) return Icons.wb_sunny_rounded;
-    if (c.contains('overcast')) return Icons.cloud_queue_rounded;
-    return Icons.cloud_rounded;
+    if (c.contains('thunder') || c.contains('storm') || c.contains('hail')) {
+      return WeatherCategory.stormy;
+    }
+    if (c.contains('snow') || c.contains('sleet') || c.contains('blizzard')) {
+      return WeatherCategory.snowy;
+    }
+    if (c.contains('rain') ||
+        c.contains('drizzle') ||
+        c.contains('shower') ||
+        c.contains('precip')) {
+      return WeatherCategory.rainy;
+    }
+    if (c.contains('fog') || c.contains('mist') || c.contains('haze')) {
+      return WeatherCategory.foggy;
+    }
+    if (c.contains('cloud') || c.contains('overcast')) {
+      return WeatherCategory.cloudy;
+    }
+    if (c.contains('sun') || c.contains('clear')) return WeatherCategory.sunny;
+    return WeatherCategory.other;
+  }
+
+  IconData get materialIcon {
+    switch (category) {
+      case WeatherCategory.stormy:
+        return Icons.thunderstorm_rounded;
+      case WeatherCategory.snowy:
+        return Icons.ac_unit_rounded;
+      case WeatherCategory.rainy:
+        return Icons.umbrella_rounded;
+      case WeatherCategory.foggy:
+        return Icons.foggy;
+      case WeatherCategory.cloudy:
+        return Icons.wb_cloudy_rounded;
+      case WeatherCategory.sunny:
+        return Icons.wb_sunny_rounded;
+      case WeatherCategory.other:
+        return Icons.cloud_rounded;
+    }
   }
 
   int get code => materialIcon.codePoint;
+}
+
+/// Plain-language weather buckets, independent of provider wording.
+enum WeatherCategory { sunny, cloudy, rainy, stormy, snowy, foggy, other }
+
+/// Air quality, normalized by the backend from whichever provider answered.
+/// `null` on [WeatherData] when the provider had no reading — never invented.
+class AirQuality {
+  final int? aqi;
+  final int? usEpaIndex;
+  final String category;
+  final double? pm2_5;
+  final double? pm10;
+
+  const AirQuality({
+    required this.aqi,
+    required this.usEpaIndex,
+    required this.category,
+    this.pm2_5,
+    this.pm10,
+  });
+
+  factory AirQuality.fromJson(Map<String, dynamic> json) => AirQuality(
+        aqi: (json['aqi'] as num?)?.toInt(),
+        usEpaIndex: (json['us_epa_index'] as num?)?.toInt(),
+        category: (json['category'] as String?) ?? '',
+        pm2_5: (json['pm2_5'] as num?)?.toDouble(),
+        pm10: (json['pm10'] as num?)?.toDouble(),
+      );
 }
 
 class IndianState {
@@ -281,6 +340,9 @@ class WeatherData {
   final double windKph;
   final String windDir;
   final double precipMm;
+  final double? pressureMb;
+  final double? visibilityKm;
+  final AirQuality? airQuality;
   final double? uv;
   final bool isDay;
 
@@ -304,6 +366,9 @@ class WeatherData {
     required this.windKph,
     required this.windDir,
     required this.precipMm,
+    required this.pressureMb,
+    required this.visibilityKm,
+    required this.airQuality,
     required this.uv,
     required this.isDay,
     required this.sunrise,
@@ -337,6 +402,12 @@ class WeatherData {
       windKph: (current['wind_kph'] as num?)?.toDouble() ?? 0,
       windDir: (current['wind_dir'] as String?) ?? '',
       precipMm: (current['precip_mm'] as num?)?.toDouble() ?? 0,
+      pressureMb: (current['pressure_mb'] as num?)?.toDouble(),
+      visibilityKm: (current['vis_km'] as num?)?.toDouble(),
+      airQuality: current['air_quality'] is Map
+          ? AirQuality.fromJson(
+              (current['air_quality'] as Map).cast<String, dynamic>())
+          : null,
       uv: (current['uv'] as num?)?.toDouble(),
       isDay: (current['is_day'] as num?)?.toInt() == 1,
       sunrise: (astro['sunrise'] as String?) ?? '',

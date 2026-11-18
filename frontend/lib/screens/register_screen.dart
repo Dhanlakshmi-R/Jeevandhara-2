@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:jeevandhara2/services/api_service.dart';
+import 'package:jeevandhara2/services/auth_navigation.dart';
+import 'package:jeevandhara2/services/session_store.dart';
 import 'package:jeevandhara2/theme/colors.dart';
 import 'package:jeevandhara2/widgets/agri_scene.dart';
 import 'package:jeevandhara2/widgets/auth_layout.dart';
@@ -87,6 +90,21 @@ class _RegisterScreenState extends State<RegisterScreen> {
         location: location.isEmpty ? null : location,
       );
       await _apiService.saveUserRole(_role);
+      // Auto-login after successful registration.
+      try {
+        final result = await _apiService.login(
+          email: _emailController.text.trim(),
+          password: _passwordController.text,
+          rememberMe: true,
+        );
+        TextInput.finishAutofillContext(shouldSave: true);
+        await SessionStore.saveIdentifier(_emailController.text.trim());
+        if (!mounted) return;
+        navigateAfterAuth(context, result.user);
+        return;
+      } catch (_) {
+        // Fall back to manual login.
+      }
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Account created \u2014 please log in')),
@@ -105,6 +123,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
       headline: 'Join Jeevandhara',
       subhead: 'Set up your account and start farming smarter.',
       scene: AgriSceneKind.weather,
+      backgroundImageUrl:
+          'https://images.unsplash.com/photo-1574943320219-553eb213f72d?w=1200&q=80',
       child: _buildForm(),
     );
   }

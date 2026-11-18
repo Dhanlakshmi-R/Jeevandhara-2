@@ -108,12 +108,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
         AppCard(
             padding: EdgeInsets.zero,
             child: Column(children: [
-              _ProfRow(
+              const _ProfRow(
                   icon: Icons.place_outlined,
                   label: 'Farm location',
                   value: 'Dharwad, Karnataka'),
               const Divider(height: 1),
-              _ProfRow(
+              const _ProfRow(
                   icon: Icons.phone_outlined,
                   label: 'Mobile',
                   value: 'Not set'),
@@ -127,7 +127,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           : [..._selectedCrops, cr])),
             ])),
         const SizedBox(height: 20),
-        _ProfSectionTitle(title: 'Language'),
+        const _ProfSectionTitle(title: 'Language'),
         AppCard(
             padding: EdgeInsets.zero,
             child: ListenableBuilder(

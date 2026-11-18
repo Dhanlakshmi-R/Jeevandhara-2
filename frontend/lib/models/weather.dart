@@ -11,10 +11,4 @@ class Weather {
     required this.rainChance,
   });
 
-  factory Weather.sampleDharwad() => const Weather(
-        location: 'Dharwad, Karnataka',
-        temperature: 32,
-        condition: 'Partly Cloudy',
-        rainChance: 20,
-      );
 }

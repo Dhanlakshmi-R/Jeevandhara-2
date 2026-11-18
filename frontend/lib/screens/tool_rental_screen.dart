@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+
 import 'package:jeevandhara2/models/tool.dart';
+import 'package:jeevandhara2/services/listings_service.dart';
 import 'package:jeevandhara2/theme/colors.dart';
 import 'package:jeevandhara2/widgets/layout.dart';
 import 'package:jeevandhara2/widgets/ui/app_modal.dart';
@@ -8,14 +10,20 @@ import 'package:jeevandhara2/widgets/ui/cards.dart';
 import 'package:jeevandhara2/widgets/ui/states.dart';
 
 class ToolRentalScreen extends StatefulWidget {
-  const ToolRentalScreen({super.key});
+  final ListingsService? service;
+
+  const ToolRentalScreen({super.key, this.service});
 
   @override
   State<ToolRentalScreen> createState() => _ToolRentalScreenState();
 }
 
 class _ToolRentalScreenState extends State<ToolRentalScreen> {
-  final List<Tool> _tools = Tool.sampleData();
+  late final ListingsService _service =
+      widget.service ?? ListingsService();
+  final List<Tool> _tools = [];
+  bool _loading = true;
+  String? _error;
   String _category = 'All';
 
   List<String> get _categories {
@@ -28,7 +36,36 @@ class _ToolRentalScreenState extends State<ToolRentalScreen> {
 
   List<Tool> get _filtered => _category == 'All'
       ? _tools
-      : _tools.where((t) => t.category == _category).toList();
+      : _tools.where((t) => t.category == _category && t.category.isNotEmpty).toList();
+
+  @override
+  void initState() {
+    super.initState();
+    _reload();
+  }
+
+  Future<void> _reload() async {
+    setState(() {
+      _loading = _tools.isEmpty;
+      _error = null;
+    });
+    try {
+      final tools = await _service.tools();
+      if (!mounted) return;
+      setState(() {
+        _tools
+          ..clear()
+          ..addAll(tools);
+        _loading = false;
+      });
+    } on Exception catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _error = e.toString();
+      });
+    }
+  }
 
   void _openDetails(Tool tool) {
     Navigator.of(context).push(
@@ -36,81 +73,126 @@ class _ToolRentalScreenState extends State<ToolRentalScreen> {
     );
   }
 
+  Future<void> _listATool() async {
+    await showAppModal(
+      context: context,
+      title: 'List your tool',
+      child: _ListToolForm(onDone: () async {
+        Navigator.of(context).pop();
+        await _reload();
+      }),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    return _tools.isEmpty
-        ? const EmptyState(
-            icon: Icons.agriculture,
-            title: 'No tools available',
-            subtitle: 'Tools listed by nearby farmers will appear here.',
-          )
-        : Column(
-            children: [
-              SizedBox(
-                height: 46,
-                child: ListView(
-                  scrollDirection: Axis.horizontal,
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  children: _categories
-                      .map((cat) => Padding(
-                            padding: const EdgeInsets.only(right: 8),
-                            child: ChoiceChip(
-                              label: Text(cat,
-                                  style: const TextStyle(fontSize: 12.5)),
-                              selected: _category == cat,
-                              onSelected: (_) =>
-                                  setState(() => _category = cat),
-                              selectedColor: c.primaryLight,
-                              side: BorderSide(
-                                  color:
-                                      _category == cat ? c.primary : c.border),
-                              labelStyle: TextStyle(
-                                color: _category == cat
-                                    ? c.primaryDark
-                                    : c.textSecondary,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ))
-                      .toList(),
-                ),
-              ),
-              Expanded(
-                child: LayoutBuilder(
-                  builder: (context, constraints) {
-                    if (constraints.maxWidth >= 900) {
-                      return GridView.builder(
-                        padding: const EdgeInsets.all(16),
-                        gridDelegate:
-                            const SliverGridDelegateWithMaxCrossAxisExtent(
-                          maxCrossAxisExtent: 340,
-                          mainAxisExtent: 170,
-                          mainAxisSpacing: 12,
-                          crossAxisSpacing: 12,
+    if (_loading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (_error != null) {
+      return EmptyState(
+        icon: Icons.cloud_off_outlined,
+        title: 'Could not load tools',
+        subtitle: _error!,
+        actionLabel: 'Try again',
+        onAction: _reload,
+      );
+    }
+    return Column(
+      children: [
+        SizedBox(
+          height: 46,
+          child: ListView(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            children: _categories
+                .map((cat) => Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: ChoiceChip(
+                        label:
+                            Text(cat, style: const TextStyle(fontSize: 12.5)),
+                        selected: _category == cat,
+                        onSelected: (_) => setState(() => _category = cat),
+                        selectedColor: c.primaryLight,
+                        side: BorderSide(
+                            color: _category == cat ? c.primary : c.border),
+                        labelStyle: TextStyle(
+                          color: _category == cat
+                              ? c.primaryDark
+                              : c.textSecondary,
+                          fontWeight: FontWeight.w600,
                         ),
+                      ),
+                    ))
+                .toList(),
+          ),
+        ),
+        Expanded(
+          child: _filtered.isEmpty
+              ? EmptyState(
+                  icon: Icons.agriculture,
+                  title: 'No tools listed yet',
+                  subtitle:
+                      'Tools are listed by real farmers. Be the first in your area to rent one out.',
+                  actionLabel: 'List your tool',
+                  onAction: _listATool,
+                )
+              : RefreshIndicator(
+                  onRefresh: _reload,
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      if (constraints.maxWidth >= 900) {
+                        return GridView.builder(
+                          padding: const EdgeInsets.all(16),
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          gridDelegate:
+                              const SliverGridDelegateWithMaxCrossAxisExtent(
+                            maxCrossAxisExtent: 340,
+                            mainAxisExtent: 170,
+                            mainAxisSpacing: 12,
+                            crossAxisSpacing: 12,
+                          ),
+                          itemCount: _filtered.length,
+                          itemBuilder: (context, index) => _ToolCard(
+                            tool: _filtered[index],
+                            onTap: () => _openDetails(_filtered[index]),
+                          ),
+                        );
+                      }
+                      return ListView.separated(
+                        padding: const EdgeInsets.all(16),
+                        physics: const AlwaysScrollableScrollPhysics(),
                         itemCount: _filtered.length,
+                        separatorBuilder: (_, __) => const SizedBox(height: 12),
                         itemBuilder: (context, index) => _ToolCard(
                           tool: _filtered[index],
                           onTap: () => _openDetails(_filtered[index]),
                         ),
                       );
-                    }
-                    return ListView.separated(
-                      padding: const EdgeInsets.all(16),
-                      itemCount: _filtered.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: 12),
-                      itemBuilder: (context, index) => _ToolCard(
-                        tool: _filtered[index],
-                        onTap: () => _openDetails(_filtered[index]),
-                      ),
-                    );
-                  },
+                    },
+                  ),
                 ),
+        ),
+        if (_tools.isNotEmpty)
+          SafeArea(
+            top: false,
+            child: Container(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+              decoration: BoxDecoration(
+                color: c.surface,
+                border: Border(top: BorderSide(color: c.divider)),
               ),
-            ],
-          );
+              child: AppTonalButton(
+                label: 'List your tool',
+                icon: Icons.add_business_outlined,
+                height: 44,
+                onPressed: _listATool,
+              ),
+            ),
+          ),
+      ],
+    );
   }
 }
 
@@ -165,24 +247,20 @@ class _ToolCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 3),
                     Text(
-                      '${tool.category} \u2022 ${tool.location}',
+                      '${tool.category} \u2022 ${tool.location.isNotEmpty ? tool.location : 'Location not shared'}',
                       style: TextStyle(fontSize: 12.5, color: c.textSecondary),
+                    ),
+                    const SizedBox(height: 5),
+                    Text(
+                      'Listed by ${tool.owner}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                          fontSize: 11.5, color: c.textSecondary),
                     ),
                     const SizedBox(height: 5),
                     Row(
                       children: [
-                        const Icon(Icons.star,
-                            size: 14, color: Color(0xFFF59E0B)),
-                        const SizedBox(width: 3),
-                        Text(
-                          tool.ownerRating.toStringAsFixed(1),
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: c.textPrimary,
-                          ),
-                        ),
-                        const SizedBox(width: 10),
                         Icon(
                           tool.available ? Icons.check_circle : Icons.cancel,
                           size: 13,
@@ -207,7 +285,7 @@ class _ToolCard extends StatelessWidget {
               Column(
                 children: [
                   Text(
-                    '\u20B9${tool.pricePerDay}',
+                    '\u20B9${tool.pricePerDay.toStringAsFixed(0)}',
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w800,
@@ -246,11 +324,7 @@ class _ToolDetailScreenState extends State<_ToolDetailScreen> {
       ? 'Select dates'
       : '${_range!.start.day}/${_range!.start.month} \u2013 ${_range!.end.day}/${_range!.end.month}';
 
-  double get _total {
-    final base = widget.tool.pricePerDay * _duration + 200;
-    final discount = widget.tool.ownerRating > 4.7 ? 100 : 0;
-    return (base - discount).toDouble();
-  }
+  double get _total => widget.tool.pricePerDay * _duration + 200;
 
   @override
   Widget build(BuildContext context) {
@@ -292,24 +366,17 @@ class _ToolDetailScreenState extends State<_ToolDetailScreen> {
                       ),
                     ),
                     Text(
-                      '${widget.tool.category} \u2022 ${widget.tool.location}',
+                      '${widget.tool.category} \u2022 ${widget.tool.location.isNotEmpty ? widget.tool.location : 'Location not shared'}',
                       style: TextStyle(fontSize: 13, color: c.textSecondary),
                     ),
                     const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        const Icon(Icons.star,
-                            size: 15, color: Color(0xFFF59E0B)),
-                        const SizedBox(width: 3),
-                        Text(
-                          '${widget.tool.ownerRating} (12 reviews)',
-                          style: TextStyle(
-                            fontSize: 12.5,
-                            fontWeight: FontWeight.w600,
-                            color: c.textPrimary,
-                          ),
-                        ),
-                      ],
+                    Text(
+                      'Listed by ${widget.tool.owner}',
+                      style: TextStyle(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w600,
+                        color: c.textSecondary,
+                      ),
                     ),
                   ],
                 ),
@@ -319,7 +386,9 @@ class _ToolDetailScreenState extends State<_ToolDetailScreen> {
           const SizedBox(height: 14),
           AppCard(
             child: Text(
-              widget.tool.description,
+              widget.tool.description.isNotEmpty
+                  ? widget.tool.description
+                  : 'No description shared by the owner.',
               style: TextStyle(
                   fontSize: 13.5, color: c.textSecondary, height: 1.5),
             ),
@@ -425,7 +494,7 @@ class _ToolDetailScreenState extends State<_ToolDetailScreen> {
               const SizedBox(width: 6),
               Expanded(
                 child: Text(
-                  'Tool will be delivered to your farm and picked up after use (\u20B9200 delivery per trip).',
+                  'Tool will be delivered to your farm and picked up after use (\u20B9200 delivery per trip). The owner confirms each booking personally.',
                   style: TextStyle(
                       fontSize: 12.5, color: c.textSecondary, height: 1.4),
                 ),
@@ -443,13 +512,6 @@ class _ToolDetailScreenState extends State<_ToolDetailScreen> {
                 const Divider(height: 1),
                 const _BillRow(
                     label: '\u20B9200 delivery fee', value: '\u20B9200'),
-                if (widget.tool.ownerRating > 4.7) ...[
-                  const Divider(height: 1),
-                  const _BillRow(
-                      label: 'Early-bird discount',
-                      value: '-\u20B9100',
-                      highlight: true),
-                ],
                 const Divider(height: 1),
                 _BillRow(
                     label: 'Total',
@@ -470,6 +532,8 @@ class _ToolDetailScreenState extends State<_ToolDetailScreen> {
                     );
                   }
                 : () async {
+                    final messenger = ScaffoldMessenger.of(context);
+                    final navigator = Navigator.of(context);
                     await showAppModal(
                       context: context,
                       title: 'Booking Summary',
@@ -488,13 +552,12 @@ class _ToolDetailScreenState extends State<_ToolDetailScreen> {
                         ],
                       ),
                     );
-                    if (!mounted) return;
-                    ScaffoldMessenger.of(context).showSnackBar(
+                    messenger.showSnackBar(
                       SnackBar(
                           content: Text(
-                              'Booking sent to $_address. Owner will confirm soon!')),
+                              'Booking request sent to ${widget.tool.owner}. Delivery: $_address. They will confirm soon.')),
                     );
-                    Navigator.of(context).pop();
+                    navigator.pop();
                   },
           ),
           const SizedBox(height: 24),
@@ -504,23 +567,192 @@ class _ToolDetailScreenState extends State<_ToolDetailScreen> {
   }
 }
 
+class _ListToolForm extends StatefulWidget {
+  final VoidCallback onDone;
+  const _ListToolForm({required this.onDone});
+
+  @override
+  State<_ListToolForm> createState() => _ListToolFormState();
+}
+
+class _ListToolFormState extends State<_ListToolForm> {
+  final ListingsService _service = ListingsService();
+  final TextEditingController _name = TextEditingController();
+  final TextEditingController _category = TextEditingController(text: 'Tillage');
+  final TextEditingController _price = TextEditingController();
+  final TextEditingController _description = TextEditingController();
+  final TextEditingController _emoji = TextEditingController(text: '\u{1FA9C}');
+  bool _saving = false;
+  String? _error;
+
+  static const _categories = [
+    'Tillage',
+    'Irrigation',
+    'Sowing',
+    'Harvesting',
+    'Spraying',
+    'Transport',
+    'Other',
+  ];
+
+  @override
+  void dispose() {
+    _name.dispose();
+    _category.dispose();
+    _price.dispose();
+    _description.dispose();
+    _emoji.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    final name = _name.text.trim();
+    final price = double.tryParse(_price.text.trim());
+    if (name.isEmpty) {
+      setState(() => _error = 'Give the tool a name');
+      return;
+    }
+    if (price == null || price <= 0) {
+      setState(() => _error = 'Enter a daily price, e.g. 400');
+      return;
+    }
+    setState(() {
+      _saving = true;
+      _error = null;
+    });
+    try {
+      await _service.createTool(
+        name: name,
+        category: _category.text.trim(),
+        pricePerDay: price,
+        description: _description.text.trim(),
+        emoji: _emoji.text.trim(),
+      );
+      if (!mounted) return;
+      widget.onDone();
+    } on Exception catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _saving = false;
+        _error = e.toString();
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (_error != null)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: Text(
+              _error!,
+              style: TextStyle(color: c.danger, fontSize: 13),
+            ),
+          ),
+        TextField(
+          controller: _name,
+          style: TextStyle(color: c.textPrimary),
+          decoration: const InputDecoration(
+            labelText: 'Tool name',
+            hintText: 'e.g. Power tiller',
+          ),
+        ),
+        const SizedBox(height: 10),
+        TextField(
+          controller: _category,
+          style: TextStyle(color: c.textPrimary),
+          decoration: InputDecoration(
+            labelText: 'Category',
+            hintText: 'Choose a category',
+            prefixIcon: const Icon(Icons.category_outlined),
+            suffixIcon: PopupMenuButton<String>(
+              itemBuilder: (_) => [
+                for (final cat in _categories)
+                  PopupMenuItem(value: cat, child: Text(cat)),
+              ],
+              onSelected: (v) => setState(() => _category.text = v),
+              child: const Padding(
+                padding: EdgeInsets.all(12),
+                child: Icon(Icons.arrow_drop_down),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 10),
+        TextField(
+          controller: _price,
+          style: TextStyle(color: c.textPrimary),
+          keyboardType: TextInputType.number,
+          decoration: const InputDecoration(
+            labelText: 'Rent per day (\u20B9)',
+            hintText: 'e.g. 400',
+            prefixIcon: Icon(Icons.currency_rupee),
+          ),
+        ),
+        const SizedBox(height: 10),
+        TextField(
+          controller: _description,
+          style: TextStyle(color: c.textPrimary),
+          maxLines: 2,
+          decoration: const InputDecoration(
+            labelText: 'Short description (optional)',
+            hintText: 'Brand, power, what it is good for',
+          ),
+        ),
+        const SizedBox(height: 10),
+        TextField(
+          controller: _emoji,
+          style: TextStyle(color: c.textPrimary, fontSize: 20),
+          decoration: const InputDecoration(
+            labelText: 'Icon (emoji)',
+            hintText: '\u{1FA9C}',
+          ),
+        ),
+        const SizedBox(height: 14),
+        Row(
+          children: [
+            Expanded(
+              child: AppTonalButton(
+                label: 'Cancel',
+                onPressed:
+                    _saving ? null : () => Navigator.of(context).pop(),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: AppPrimaryButton(
+                label: _saving ? 'Posting\u2026' : 'List tool',
+                icon: Icons.check,
+                onPressed: _saving ? null : _submit,
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
 class _BillRow extends StatelessWidget {
   final String label;
   final String value;
   final bool bold;
-  final bool highlight;
 
   const _BillRow({
     required this.label,
     required this.value,
     this.bold = false,
-    this.highlight = false,
   });
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final color = highlight ? c.positive : c.textPrimary;
+    final color = c.textPrimary;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(

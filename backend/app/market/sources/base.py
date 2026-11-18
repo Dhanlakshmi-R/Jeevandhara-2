@@ -31,6 +31,10 @@ import yaml
 
 logger = logging.getLogger("jeevandhara.market")
 
+#: Provenance tiers a source may declare. E is deliberately absent: no seeded,
+#: mocked or illustrative row may reach a user, so no source can claim it.
+VALID_TIERS = ("A", "B", "C", "D")
+
 # .../market/sources/base.py -> .../market/data_sources.yaml
 _CONFIG_PATH = str(Path(__file__).resolve().parent.parent / "data_sources.yaml")
 
@@ -148,6 +152,7 @@ class SourceStatus:
     verified: bool
     confidence: str
     attribution: str
+    tier: str = "C"
     provides_arrivals: bool = False
     provides_traded_quantity: bool = False
     provides_trade_count: bool = False
@@ -163,6 +168,7 @@ class SourceStatus:
             "verified": self.verified,
             "confidence": self.confidence,
             "attribution": self.attribution,
+            "tier": self.tier,
             "provides_arrivals": self.provides_arrivals,
             "provides_traded_quantity": self.provides_traded_quantity,
             "provides_trade_count": self.provides_trade_count,
@@ -200,6 +206,28 @@ class MarketSource:
         self.last_error: str | None = None
         self._cache = TtlCache(self.cache_ttl)
         self._last_call_at: float | None = None
+        #: Set only while a bulk sync is walking the whole crop list. It lowers
+        #: the call floor to the source's own published rate, so 30 crops take
+        #: minutes instead of 30 x ``min_interval_seconds`` - without changing
+        #: what an interactive read may do.
+        self._bulk_pace: float | None = None
+
+    @property
+    def sync_pace(self) -> float:
+        """Seconds between calls during a bulk sync for this source.
+
+        Defaults to the interactive floor; ``sync_min_interval_seconds`` in
+        ``data_sources.yaml`` may lower it, never raise it.
+        """
+        configured = float(self.config.get("sync_min_interval_seconds", 0) or 0)
+        if configured <= 0:
+            return self.min_interval
+        if self.min_interval <= 0:
+            return configured
+        return min(self.min_interval, configured)
+
+    def set_bulk_pace(self, seconds: float | None) -> None:
+        self._bulk_pace = seconds
 
     # -------------------------------------------------------------- config
 
@@ -242,6 +270,17 @@ class MarketSource:
         return str(self.config.get("attribution", "Unknown source"))
 
     @property
+    def tier(self) -> str:
+        """Provenance tier A-D as declared in data_sources.yaml.
+
+        Defaults to C (a feed we do not control), because claiming A for a
+        source that never declared one is exactly the kind of unearned
+        confidence this field exists to prevent.
+        """
+        value = str(self.config.get("tier", "C")).strip().upper()
+        return value if value in VALID_TIERS else "C"
+
+    @property
     def cache_ttl(self) -> float:
         bucket = "arrivals" if self.kind == "arrival" else "prices"
         return float(CACHE_TTL.get(bucket, 900))
@@ -272,9 +311,10 @@ class MarketSource:
         return float(self.config.get("min_interval_seconds", 0) or 0)
 
     def rate_limit_ok(self) -> bool:
-        if not self.min_interval or self._last_call_at is None:
+        interval = self.min_interval if self._bulk_pace is None else self._bulk_pace
+        if not interval or self._last_call_at is None:
             return True
-        return (time.monotonic() - self._last_call_at) >= self.min_interval
+        return (time.monotonic() - self._last_call_at) >= interval
 
     # --------------------------------------------------------- public API
 
@@ -311,7 +351,18 @@ class MarketSource:
         try:
             self._last_call_at = time.monotonic()
             fresh_rows = self._fetch(**params)
-        except SourceUnavailable:
+        except SourceUnavailable as exc:
+            if exc.kind == "no_rows":
+                # The feed answered and simply does not carry this query.
+                # Remember it so we stop re-asking inside the TTL, and do not
+                # charge it to the breaker: a healthy source must not be
+                # tripped open by crops it never publishes.
+                self.breaker.record_success()
+                self.last_success_at = utcnow()
+                self.last_error = None
+                self._cache.set(cache_key, [])
+                self._cache.set(cache_key + "::at", self.last_success_at)
+                raise
             self.breaker.record_failure()
             self.last_error = "source unavailable"
             if rows is not None:
@@ -360,6 +411,7 @@ class MarketSource:
             "confidence": self.confidence,
             "verified": self.verified,
             "attribution": self.attribution,
+            "tier": self.tier,
             "fetched_at": _iso(fetched_at),
             "stale": stale,
             "note": note,
@@ -372,6 +424,7 @@ class MarketSource:
             verified=self.verified,
             confidence=self.confidence,
             attribution=self.attribution,
+            tier=self.tier,
             provides_arrivals=self.provides_arrivals,
             provides_traded_quantity=self.provides_traded_quantity,
             provides_trade_count=self.provides_trade_count,

@@ -11,6 +11,7 @@ from sqlalchemy import (
     Float,
     ForeignKey,
     Integer,
+    JSON,
     String,
     UniqueConstraint,
 )
@@ -57,11 +58,42 @@ class User(Base):
     # False for users created via Google/OTP before they finish onboarding.
     profile_complete = Column(Boolean, nullable=False, default=True)
     location = Column(String, nullable=True)
+    # Account status. A suspended account (is_active=False) must be rejected on
+    # login and on every protected request, not merely hidden in the UI.
+    is_active = Column(Boolean, nullable=False, default=True)
+    # Highest admin tier. Only a superadmin may suspend other admins or read
+    # audit exports. Never settable from the public register screen.
+    is_superadmin = Column(Boolean, nullable=False, default=False)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     listings = relationship("Listing", back_populates="farmer")
+    crop_listings = relationship(
+        "CropListing",
+        back_populates="owner",
+        foreign_keys="CropListing.owner_id",
+    )
+    marketplace_products = relationship(
+        "MarketplaceProduct",
+        back_populates="poster",
+        foreign_keys="MarketplaceProduct.poster_id",
+    )
+    trader_offers = relationship(
+        "TraderOffer",
+        back_populates="owner",
+        foreign_keys="TraderOffer.owner_id",
+    )
+    tool_listings = relationship(
+        "ToolListing",
+        back_populates="owner",
+        foreign_keys="ToolListing.owner_id",
+    )
     inquiries = relationship("Inquiry", back_populates="farmer")
     price_alerts = relationship("WatchlistPriceAlert", back_populates="user")
+    sessions = relationship(
+        "UserSession",
+        back_populates="user",
+        foreign_keys="UserSession.user_id",
+    )
 
 
 class OtpRequest(Base):
@@ -86,6 +118,132 @@ class OtpRequest(Base):
 def generate_verification_code() -> str:
     """Cryptographically random 6-digit code."""
     return f"{secrets.randbelow(1000000):06d}"
+
+
+class TraderOffer(Base):
+    """A trader's public "I am buying" card.
+
+    User-generated content, not scraped: nothing on this card can come from a
+    feed, because "who is buying in my village and at what price" is something
+    only the trader knows. An empty table is therefore the truth until someone
+    publishes an offer - it is never seeded with invented buyers.
+    """
+
+    __tablename__ = "trader_offers"
+
+    id = Column(Integer, primary_key=True, index=True)
+    owner_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+
+    company = Column(String, nullable=True)
+    # Comma-separated canonical crop names ("Onion, Tomato, Chilli"). A single
+    # string keeps this a list without pulling in a JSON column or a join table
+    # for what is, ultimately, a tag list on a business card.
+    crops = Column(String, nullable=True)
+    # What the trader says they are offering per quintal. Not verified - it is
+    # the trader's own claim, and the card says so.
+    offered_price_per_quintal = Column(Float, nullable=True)
+    note = Column(String, nullable=True)
+    emoji = Column(String, nullable=False, default="\U0001F3EA")
+    available = Column(Boolean, nullable=False, default=True)
+    # active | hidden - a trader can take their card down without deleting it.
+    status = Column(String, nullable=False, default="active")
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    updated_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+
+    owner = relationship("User", back_populates="trader_offers")
+
+
+class ToolListing(Base):
+    """A rentable tool posted by a farmer, ready to lend or hire out.
+
+    Like TraderOffer this is user-generated: the only source of a rental
+    listing is the person who owns the tool. Pricing and availability are the
+    owner's own claim, labelled as such.
+    """
+
+    __tablename__ = "tool_listings"
+
+    id = Column(Integer, primary_key=True, index=True)
+    owner_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+
+    name = Column(String, nullable=False)
+    emoji = Column(String, nullable=False, default="\U0001FA9C")
+    category = Column(String, nullable=False, default="Other")
+    description = Column(String, nullable=True)
+    price_per_day = Column(Float, nullable=False)
+    location = Column(String, nullable=True)
+    available = Column(Boolean, nullable=False, default=True)
+    status = Column(String, nullable=False, default="active")
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    updated_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+
+    owner = relationship("User", back_populates="tool_listings")
+
+
+class CropListing(Base):
+    """A farmer's "I have this to sell" posting.
+
+    User-generated: the number that matters (what is for sale, where, at what
+    expected price) is the farmer's own claim, labelled as such. `status`
+    runs `active -> sold`, or `hidden` when the farmer takes it down; an
+    empty table is honest until someone posts.
+    """
+
+    __tablename__ = "crop_listings"
+
+    id = Column(Integer, primary_key=True, index=True)
+    owner_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+
+    # Canonical crop name when it matches the market normalizer, else the
+    # farmer's own spelling.
+    name = Column(String, nullable=False, index=True)
+    emoji = Column(String, nullable=False, default="\U0001F33E")
+    quantity = Column(Float, nullable=False)
+    unit = Column(String, nullable=False, default="kg")
+    # INR per unit, the farmer's own expectation, not a market quote.
+    expected_price = Column(Float, nullable=True)
+    location = Column(String, nullable=True)
+    description = Column(String, nullable=True)
+    harvest_date = Column(Date, nullable=True)
+
+    status = Column(String, nullable=False, default="active")  # active | sold | hidden
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    updated_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+
+    owner = relationship("User", back_populates="crop_listings")
+
+
+class MarketplaceProduct(Base):
+    """A farming input listed for sale on the community marketplace.
+
+    Same ownership rules as the other user-generated modules: a product only
+    exists because someone listed it. `rating` is always NULL until real
+    reviews exist - a rating column full of invented stars is exactly the
+    fabrication this codebase refuses.
+    """
+
+    __tablename__ = "marketplace_products"
+
+    id = Column(Integer, primary_key=True, index=True)
+    # Nullable so a future admin/vendor row can post without a normal user.
+    poster_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
+
+    name = Column(String, nullable=False)
+    emoji = Column(String, nullable=False, default="\U0001F6D2")
+    # Seeds | Fertilizers | Pesticides | Tools | Eco-friendly
+    category = Column(String, nullable=False, default="Seeds", index=True)
+    price = Column(Float, nullable=False)
+    unit = Column(String, nullable=False, default="pack")
+    # INR per unit. Null until reviews exist.
+    rating = Column(Float, nullable=True)
+    in_stock = Column(Boolean, nullable=False, default=True)
+    description = Column(String, nullable=True)
+
+    status = Column(String, nullable=False, default="active")  # active | hidden
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    updated_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+
+    poster = relationship("User", back_populates="marketplace_products")
 
 
 class Listing(Base):
@@ -382,3 +540,198 @@ class WatchlistPriceAlert(Base):
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
 
     user = relationship("User", back_populates="price_alerts")
+
+
+# =============================================================================
+# Accountability: sessions and the audit trail
+#
+# Two rules drive everything below, and both are privacy rules as much as
+# security ones:
+#
+# 1. We record WHAT a person did and WHEN, never the secret they used to do it.
+#    No password, hash, OTP, token or raw request body is ever written here;
+#    `app/audit.py` redacts before insert so a careless caller cannot leak one.
+#
+# 2. Timestamps are UTC. Display converts to IST; storage does not, because a
+#    trail that means different things in different timezones is not a trail.
+# =============================================================================
+
+
+class UserSession(Base):
+    """One signed-in session (one device / one login).
+
+    A row is opened on login and closed on explicit logout, force-revoke or
+    inactivity. An app that is merely closed leaves the row active until the
+    inactivity window marks it stale and records `session_expired` - closing an
+    app is not a logout and must not be recorded as one.
+    """
+
+    __tablename__ = "user_sessions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+
+    started_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    last_seen_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    ended_at = Column(DateTime, nullable=True)
+    # logout | revoked | expired | rotation_reuse
+    end_reason = Column(String, nullable=True)
+
+    ip_address = Column(String, nullable=True)
+    user_agent = Column(String, nullable=True)
+    device_label = Column(String, nullable=True)
+    is_active = Column(Boolean, nullable=False, default=True)
+
+    # Phase 2 (Part B): the current refresh-token hash for this session, rotated
+    # on every refresh. Null until refresh tokens are issued.
+    refresh_token_hash = Column(String, nullable=True, index=True)
+    refresh_token_family = Column(String, nullable=True, index=True)
+
+    user = relationship("User", back_populates="sessions")
+
+
+class AuditEvent(Base):
+    """An append-only record of one thing that happened.
+
+    `metadata` is JSON and is redacted by `app/audit.py` before it is written.
+    The Python attribute is `metadata_json` because `metadata` is reserved on a
+    declarative class; the physical column is still named `metadata`.
+    """
+
+    __tablename__ = "audit_events"
+
+    id = Column(Integer, primary_key=True, index=True)
+
+    # Null for system-generated events (retention prunes, scheduled jobs).
+    actor_user_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
+    actor_role = Column(String, nullable=True)
+
+    event_type = Column(String, nullable=False, index=True)
+    entity_type = Column(String, nullable=True, index=True)
+    entity_id = Column(String, nullable=True, index=True)
+    action = Column(String, nullable=True)
+
+    summary_en = Column(String, nullable=True)
+    summary_kn = Column(String, nullable=True)
+    metadata_json = Column("metadata", JSON, nullable=True)
+
+    ip_address = Column(String, nullable=True)
+    user_agent = Column(String, nullable=True)
+    device_label = Column(String, nullable=True)
+    session_id = Column(Integer, nullable=True, index=True)
+
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow, index=True)
+
+    actor = relationship("User", foreign_keys=[actor_user_id])
+
+
+# =============================================================================
+# Admin console operations
+#
+# Everything below backs the administrator console (weather alerts,
+# notifications, settings, reports, crop analytics, market review). Same rule as
+# the rest of the schema: nothing here is seeded or invented. A weather alert or
+# a broadcast only exists because an operator published it; an analytics number
+# is computed from rows that were actually written.
+# =============================================================================
+
+
+class WeatherAlert(Base):
+    """An operator-published weather warning for a region.
+
+    This is deliberately separate from the third-party forecast feed: a feed's
+    alert is a provider's claim, whereas a row here is the operator's own
+    advisory, shown to farmers in the affected scope while it is active.
+    """
+
+    __tablename__ = "weather_alerts"
+
+    id = Column(Integer, primary_key=True, index=True)
+    title = Column(String, nullable=False)
+    message_en = Column(String, nullable=False)
+    message_kn = Column(String, nullable=True)
+    # info | warning | critical — drives colour and urgency in the app.
+    severity = Column(String, nullable=False, default="info", index=True)
+
+    # all | state | district. A value is required for state/district.
+    scope_type = Column(String, nullable=False, default="all", index=True)
+    scope_value = Column(String, nullable=True, index=True)
+
+    valid_from = Column(DateTime, nullable=True)
+    valid_until = Column(DateTime, nullable=True)
+    is_active = Column(Boolean, nullable=False, default=True, index=True)
+
+    created_by_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    updated_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+
+    created_by = relationship("User", foreign_keys=[created_by_id])
+
+
+class Notification(Base):
+    """One broadcast an operator sent, and to whom.
+
+    Delivery is not fanned out into per-user rows yet; what is stored is the
+    message plus the audience it was resolved against and how many accounts that
+    audience contained at send time. That keeps the history truthful ("sent to 42
+    farmers") without inventing a delivery receipt we cannot produce.
+    """
+
+    __tablename__ = "notifications"
+
+    id = Column(Integer, primary_key=True, index=True)
+    title = Column(String, nullable=False)
+    body_en = Column(String, nullable=False)
+    body_kn = Column(String, nullable=True)
+    # info | warning | critical
+    priority = Column(String, nullable=False, default="info", index=True)
+
+    # all | role | location | user
+    audience = Column(String, nullable=False, default="all", index=True)
+    # role name, location string, or user id (as text) depending on audience.
+    audience_value = Column(String, nullable=True)
+
+    recipient_count = Column(Integer, nullable=False, default=0)
+
+    created_by_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow, index=True)
+
+    created_by = relationship("User", foreign_keys=[created_by_id])
+
+
+class SoilMoistureReading(Base):
+    """One reading from a soil-moisture (and optional temp/humidity) sensor.
+
+    Device-agnostic: any board (ESP32, Arduino, etc.) that can POST JSON
+    can feed this table. `device_id` identifies the physical unit; readings
+    are never invented — an empty table means no sensor has reported yet.
+    """
+
+    __tablename__ = "soil_moisture_readings"
+
+    id = Column(Integer, primary_key=True, index=True)
+    device_id = Column(String, nullable=False, index=True)
+    moisture_pct = Column(Float, nullable=False)
+    temperature_c = Column(Float, nullable=True)
+    humidity_pct = Column(Float, nullable=True)
+    recorded_at = Column(DateTime, nullable=False, default=datetime.utcnow, index=True)
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+
+
+class AppSetting(Base):
+    """A single operator-editable configuration value.
+
+    Only keys on the server-side whitelist may be written, and each is coerced
+    to its declared type on read, so an operator cannot store an arbitrary blob
+    or a value the app cannot interpret.
+    """
+
+    __tablename__ = "app_settings"
+
+    id = Column(Integer, primary_key=True, index=True)
+    key = Column(String, unique=True, index=True, nullable=False)
+    value = Column(String, nullable=True)
+    updated_by_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    updated_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+
+    updated_by = relationship("User", foreign_keys=[updated_by_id])

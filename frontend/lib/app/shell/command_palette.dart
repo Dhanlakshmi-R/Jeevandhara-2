@@ -173,8 +173,9 @@ class _CommandPaletteState extends State<CommandPalette> {
       // Prices rather than every tool in the marketplace group.
       int? best;
       if (byLabel != null) best = byLabel;
-      if (byHint != null)
+      if (byHint != null) {
         best = best == null ? byHint - 20 : max(best, byHint - 20);
+      }
       if (best != null) scored.add((best, command));
     }
     scored.sort((a, b) => b.$1.compareTo(a.$1));

@@ -52,11 +52,13 @@ class _ChatScreenState extends State<ChatScreen> {
 
   final _scrollController = ScrollController();
   final _inputController = TextEditingController();
+  String _language = 'en';
 
   @override
   void initState() {
     super.initState();
     _controller.addListener(_onControllerChanged);
+    _controller.language = _language;
     // Kick off restore + capability fetch. Both are non-fatal; the chat is
     // usable before either resolves.
     WidgetsBinding.instance.addPostFrameCallback((_) async {
@@ -186,6 +188,7 @@ class _ChatScreenState extends State<ChatScreen> {
               : null,
           onDismissError: _controller.dismissError,
           onOpenTool: widget.onOpenTool,
+          language: _language,
         );
       },
     );
@@ -203,16 +206,63 @@ class _ChatScreenState extends State<ChatScreen> {
         Gap.gutter,
         Gap.md + MediaQuery.paddingOf(context).bottom,
       ),
-      child: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 780),
-          child: ChatComposer(
-            controller: _inputController,
-            busy: _controller.isBusy,
-            onSend: () => _controller.send(_inputController.text),
-            onAttach: () => _showToolSheet(context),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              for (final entry in const [('en', 'EN'), ('kn', 'KN'), ('hi', 'HI')])
+                Padding(
+                  padding: const EdgeInsets.only(left: 6),
+                  child: ChoiceChip(
+                    label: Text(entry.$2),
+                    selected: _language == entry.$1,
+                    onSelected: (_) async {
+                      if (_controller.isBusy) return;
+                      final newLang = entry.$1;
+                      setState(() => _language = newLang);
+                      _controller.language = newLang;
+                      if (_controller.messages.isEmpty) return;
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Translating conversation...'),
+                            duration: Duration(seconds: 1),
+                          ),
+                        );
+                      }
+                      // Translate the whole conversation into the new language.
+                      for (final m in _controller.messages) {
+                        final translated = await _controller.translateText(
+                          m.text,
+                          newLang,
+                        );
+                        m.text = translated;
+                      }
+                      if (mounted) setState(() {});
+                    },
+                  ),
+                ),
+            ],
           ),
-        ),
+          const SizedBox(height: Gap.sm),
+          Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 780),
+              child: ChatComposer(
+                controller: _inputController,
+                busy: _controller.isBusy,
+                onSend: () {
+                  final text = _inputController.text;
+                  _inputController.clear();
+                  _controller.send(text);
+                },
+                onAttach: () => _showToolSheet(context),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

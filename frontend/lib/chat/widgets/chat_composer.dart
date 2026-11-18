@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import 'package:jeevandhara2/design/tokens.dart';
 import 'package:jeevandhara2/design/typography.dart';
@@ -98,21 +99,30 @@ class _ChatComposerState extends State<ChatComposer> {
           ConstrainedBox(
             constraints: const BoxConstraints(maxHeight: 168),
             child: Scrollbar(
-              child: TextField(
-                controller: widget.controller,
-                focusNode: _focusNode,
-                enabled: widget.enabled,
-                minLines: 1,
-                maxLines: _maxLines,
-                style: AppType.composer(context),
-                cursorColor: c.accent,
-                textCapitalization: TextCapitalization.sentences,
-                keyboardType: TextInputType.multiline,
-                textInputAction: TextInputAction.newline,
-                // Enter inserts a newline, matching every other chat app.
-                // Send stays on the button so a multi-line question about a
-                // list of crops is not cut off at the first line.
-                decoration: InputDecoration(
+              child: Focus(
+                onKeyEvent: (node, event) {
+                  if (event is KeyDownEvent &&
+                      event.logicalKey == LogicalKeyboardKey.enter &&
+                      !HardwareKeyboard.instance.isShiftPressed) {
+                    _submit();
+                    return KeyEventResult.handled;
+                  }
+                  return KeyEventResult.ignored;
+                },
+                child: TextField(
+                  controller: widget.controller,
+                  focusNode: _focusNode,
+                  enabled: widget.enabled,
+                  minLines: 1,
+                  maxLines: _maxLines,
+                  style: AppType.composer(context),
+                  cursorColor: c.accent,
+                  textCapitalization: TextCapitalization.sentences,
+                  keyboardType: TextInputType.multiline,
+                  textInputAction: TextInputAction.send,
+                  onSubmitted: (_) => _submit(),
+                  // Enter submits; Shift+Enter inserts a newline.
+                  decoration: InputDecoration(
                   hintText: widget.hint,
                   hintStyle: AppType.composer(context).copyWith(
                     color: c.textSecondary.withValues(alpha: 0.75),
@@ -123,6 +133,7 @@ class _ChatComposerState extends State<ChatComposer> {
                   contentPadding: EdgeInsets.zero,
                   isCollapsed: true,
                 ),
+              ),
               ),
             ),
           ),

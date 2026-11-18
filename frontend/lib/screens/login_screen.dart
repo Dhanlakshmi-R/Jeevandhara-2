@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:jeevandhara2/services/api_service.dart';
 import 'package:jeevandhara2/services/auth_navigation.dart';
+import 'package:jeevandhara2/services/session_store.dart';
 import 'package:jeevandhara2/theme/colors.dart';
 import 'package:jeevandhara2/widgets/auth_layout.dart';
 import 'package:jeevandhara2/widgets/agri_scene.dart';
@@ -27,6 +29,21 @@ class _LoginScreenState extends State<LoginScreen> {
   String? _errorMessage;
 
   @override
+  void initState() {
+    super.initState();
+    _rememberMe = SessionStore.isRemembered;
+    _prefillRememberedIdentifier();
+  }
+
+  /// Pre-fills the field from the last sign-in so returning users type less.
+  /// Only the identifier is remembered — never the password.
+  Future<void> _prefillRememberedIdentifier() async {
+    final identifier = await SessionStore.readIdentifier();
+    if (!mounted || identifier == null || identifier.isEmpty) return;
+    setState(() => _emailController.text = identifier);
+  }
+
+  @override
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
@@ -41,11 +58,21 @@ class _LoginScreenState extends State<LoginScreen> {
       _errorMessage = null;
     });
 
+    final email = _emailController.text.trim();
     try {
       final result = await _apiService.login(
-        email: _emailController.text.trim(),
+        email: email,
         password: _passwordController.text,
+        rememberMe: _rememberMe,
       );
+      // Offer the OS credential manager the chance to save the login. The
+      // password is handed to the platform, not written to app storage.
+      TextInput.finishAutofillContext(shouldSave: true);
+      if (_rememberMe) {
+        await SessionStore.saveIdentifier(email);
+      } else {
+        await SessionStore.clearIdentifier();
+      }
       if (!mounted) return;
       navigateAfterAuth(context, result.user);
     } catch (e) {
@@ -67,6 +94,8 @@ class _LoginScreenState extends State<LoginScreen> {
       headline: 'Welcome back',
       subhead: 'Log in to continue farming smarter.',
       scene: AgriSceneKind.sunrise,
+      backgroundImageUrl:
+          'https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=1200&q=80',
       child: _buildForm(),
     );
   }

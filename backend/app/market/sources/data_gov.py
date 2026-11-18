@@ -169,7 +169,7 @@ class DataGovSource(MarketSource):
             raise SourceUnavailable(
                 self.name,
                 "; ".join(errors) or "no records returned",
-                kind="empty",
+                kind="error" if errors else "no_rows",
             )
         return rows
 
